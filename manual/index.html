@@ -42,6 +42,22 @@
       background:var(--card); color:var(--text); text-decoration:none; font-size:13px; }
     .btn:hover{ background: color-mix(in oklab, var(--card) 70%, var(--accent) 8%); }
     footer{ color:var(--muted); font-size:12px; padding:22px 14px 34px; }
+    /* --- Mobile TOC toggle --- */
+#tocBtn { display:none; }
+
+@media (max-width: 859px){
+  /* スマホは目次をデフォルト閉 */
+  #toc { display:none; }
+  #tocBtn { display:inline-block; }
+
+  /* 開いた時だけ表示 */
+  body.toc-open #toc { display:block; }
+  body.toc-open main.card { display:none; } /* 目次表示中は本文を隠す（邪魔にならない） */
+
+  /* 目次をスマホ用に大きめに */
+  #toc { position: static; top:auto; }
+}
+
   </style>
 </head>
 <body>
@@ -51,16 +67,18 @@
       <h1>YJ-WXK-01 取扱説明書（完全版）</h1>
       <div class="sub">型番：<span class="mono">YJ-WXK-01</span> / 異名：WAKINYAN / 分類：イベント駆動・非侵襲高感度・短期高出力</div>
     </div>
-    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-      <a class="btn" href="../index.html">← チェックアプリへ</a>
-      <a class="btn" href="#err">エラーコード</a>
-      <a class="btn" href="#ops">運用原則</a>
-    </div>
+<div style="display:flex; gap:8px; flex-wrap:wrap;">
+  <a class="btn" href="../index.html">← チェックアプリへ</a>
+  <button class="btn" id="tocBtn" type="button">目次</button>
+  <a class="btn" href="#err">エラーコード</a>
+  <a class="btn" href="#ops">運用原則</a>
+</div>
+
   </div>
 </header>
 
 <div class="wrap grid">
-  <nav>
+  <nav　id="toc">
     <div class="small">目次</div>
     <a href="#preface">序文</a>
     <a href="#core">存在構造（最終定義）</a>
@@ -239,5 +257,22 @@
 <footer class="wrap">
   <div>© YJ-WXK-01 Manual. Hosted on GitHub Pages.</div>
 </footer>
+  <script>
+  const tocBtn = document.getElementById("tocBtn");
+  if (tocBtn) {
+    tocBtn.addEventListener("click", () => {
+      document.body.classList.toggle("toc-open");
+    });
+  }
+  // 目次内リンクを押したら自動で閉じる
+  const toc = document.getElementById("toc");
+  if (toc) {
+    toc.addEventListener("click", (e) => {
+      if (e.target.tagName === "A") {
+        document.body.classList.remove("toc-open");
+      }
+    });
+  }
+</script>
 </body>
 </html>
