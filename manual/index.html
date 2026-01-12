@@ -37,6 +37,7 @@
     .hr{ height:1px; background:var(--line); margin:16px 0; }
     ul{ margin: 8px 0 0 18px; }
     .small{ font-size:13px; color:var(--muted); }
+    .muted{ color:var(--muted); }
     .topbar{ display:flex; gap:10px; align-items:center; justify-content:space-between; }
     .btn{ display:inline-block; padding:8px 10px; border-radius:12px; border:1px solid var(--line);
       background:var(--card); color:var(--text); text-decoration:none; font-size:13px; }
@@ -310,4 +311,88 @@
 
   <p class="small">最終改訂：<span class="mono">Rev.1.1.2.</span></p>
 </section>
+  </main>
+</div>
+
+<footer class="wrap">
+  <div>© YJ-WXK-01 Manual. Hosted on GitHub Pages.</div>
+</footer>
+
+<script>
+  const tocBtn = document.getElementById("tocBtn");
+  if (tocBtn) {
+    tocBtn.addEventListener("click", () => {
+      document.body.classList.toggle("toc-open");
+    });
+  }
+  const toc = document.getElementById("toc");
+  if (toc) {
+    toc.addEventListener("click", (e) => {
+      if (e.target.tagName === "A") {
+        document.body.classList.remove("toc-open");
+      }
+    });
+  }
+</script>
+
+<script>
+  (function(){
+    const search = document.getElementById('ecSearch');
+    const reset = document.getElementById('ecReset');
+    const list = document.getElementById('ecList');
+    const chips = Array.from(document.querySelectorAll('#yjwxk-errorcodes .chip'));
+    if(!search || !reset || !list) return;
+
+    let activeFilter = 'all';
+    const normalize = (s) => (s || '').toString().toLowerCase().replace(/\s+/g,' ').trim();
+    const cards = Array.from(list.querySelectorAll('.ec-card'));
+
+    function matchFilter(card){
+      if(activeFilter === 'all') return true;
+      const sev = (card.getAttribute('data-sev') || '').toUpperCase();
+      const domain = (card.getAttribute('data-domain') || '').toLowerCase();
+      if(activeFilter === sev) return true;
+      if(activeFilter.startsWith('domain:')){
+        return domain === activeFilter.split(':')[1];
+      }
+      return true;
+    }
+
+    function apply(){
+      const q = normalize(search.value);
+      cards.forEach(card => {
+        const txt = normalize(card.innerText);
+        const okText = (!q || txt.includes(q));
+        const okFilter = matchFilter(card);
+        card.style.display = (okText && okFilter) ? '' : 'none';
+      });
+    }
+
+    chips.forEach(btn => {
+      btn.addEventListener('click', () => {
+        chips.forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        activeFilter = btn.getAttribute('data-filter') || 'all';
+        apply();
+      });
+    });
+
+    search.addEventListener('input', apply);
+    reset.addEventListener('click', () => {
+      search.value = '';
+      activeFilter = 'all';
+      chips.forEach(b => b.classList.remove('is-active'));
+      const all = chips.find(b => (b.getAttribute('data-filter') === 'all'));
+      if(all) all.classList.add('is-active');
+      apply();
+      search.focus();
+    });
+
+    apply();
+  })();
+</script>
+  
+
+</body>
+</html>
 
