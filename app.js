@@ -8,19 +8,21 @@ const STORAGE_KEY = "wxk_logs_v1";
 const ERR_CODES = [
   { code: "001", name: "常駐要求過負荷", sev: "Critical", quick: "範囲・期限を宣言／距離復帰" },
   { code: "002", name: "境界侵害", sev: "Critical", quick: "中断／距離復帰" },
-  { code: "003", name: "責任未定義ループ", sev: "High", quick: "誰が決めるか確定" },
-  { code: "004", name: "感情受信飽和", sev: "High", quick: "時間枠で回線を細く" },
-  { code: "005", name: "意味過剰生成", sev: "High", quick: "夜に判断しない／接地" },
-  { code: "101", name: "過剰開示誘発", sev: "High", quick: "初回から区切る" },
-  { code: "102", name: "基準点誤認", sev: "High", quick: "決定を相手に返す" },
-  { code: "104", name: "役割化・装置化", sev: "High", quick: "役割を減らす／表を出す" },
-  { code: "201", name: "熱烈出力→常駐期待", sev: "High", quick: "ペース・境界線合意" },
+  { code: "003", name: "責任未定義ループ", sev: "High", quick: "『誰が決める？』を確定" },
+  { code: "004", name: "感情受信飽和", sev: "High", quick: "相談を時間枠化／回線を細く" },
+  { code: "005", name: "意味過剰生成", sev: "High", quick: "夜に判断しない／身体接地" },
+  { code: "101", name: "過剰開示誘発", sev: "High", quick: "初回から区切る（今日はここまで）" },
+  { code: "102", name: "基準点誤認", sev: "High", quick: "決定を相手に返す質問" },
+  { code: "104", name: "役割化・装置化", sev: "High", quick: "役割を減らす／できること表" },
+  { code: "201", name: "熱烈出力→常駐期待", sev: "High", quick: "ペース・頻度・境界線合意" },
   { code: "202", name: "曖昧関係長期化", sev: "Critical", quick: "定義要求 or 離脱" },
   { code: "203", name: "反応テスト検知", sev: "Critical", quick: "不可宣言／継続なら終了" },
   { code: "204", name: "身体遮断", sev: "High", quick: "接触中止／安全再構築" },
   { code: "301", name: "学際翻訳過多", sev: "Med", quick: "仮結論を先に置く" },
-  { code: "303", name: "締切未設定", sev: "High", quick: "擬似締切を作る" }
+  { code: "303", name: "締切未設定", sev: "High", quick: "擬似締切を作る（外部提出）" }
 ];
+
+const SEVERITY_RANK = { "Critical": 3, "High": 2, "Med": 1, "Info": 0 };
 
 // --- Tabs ---
 document.querySelectorAll("nav button").forEach(btn => {
@@ -42,18 +44,38 @@ overload.addEventListener("input", () => overloadVal.textContent = overload.valu
 // --- ERR chips ---
 const errChips = document.getElementById("errChips");
 const selectedErr = new Set();
+const chipButtons = new Map(); // code -> button
+
 ERR_CODES.forEach(e => {
   const b = document.createElement("button");
   b.type = "button";
   b.className = "chip";
   b.textContent = `${e.code} ${e.name}`;
-  b.addEventListener("click", () => {
-    if (selectedErr.has(e.code)) selectedErr.delete(e.code);
-    else selectedErr.add(e.code);
-    b.classList.toggle("active");
-  });
+  b.dataset.code = e.code;
+
+  b.addEventListener("click", () => toggleChip(e.code));
   errChips.appendChild(b);
+  chipButtons.set(e.code, b);
 });
+
+function toggleChip(code, forceState = null) {
+  const btn = chipButtons.get(code);
+  if (!btn) return;
+  const isActive = selectedErr.has(code);
+  const next = (forceState === null) ? !isActive : forceState;
+
+  if (next) selectedErr.add(code);
+  else selectedErr.delete(code);
+
+  btn.classList.toggle("active", next);
+}
+
+function setChipsFromCodes(codes) {
+  // Clear all
+  for (const code of selectedErr) toggleChip(code, false);
+  // Set requested
+  codes.forEach(c => toggleChip(c, true));
+}
 
 // --- Storage helpers ---
 function loadLogs() {
@@ -62,6 +84,16 @@ function loadLogs() {
 }
 function saveLogs(logs) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+}
+
+function escapeHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, (c) => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
+function fmt(ts) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`;
 }
 
 // --- Save entry ---
@@ -92,29 +124,26 @@ document.getElementById("saveBtn").addEventListener("click", () => {
 });
 
 // --- List render ---
-function fmt(ts) {
-  const d = new Date(ts);
-  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`;
-}
-
 function renderList() {
   const ul = document.getElementById("logList");
   ul.innerHTML = "";
   const logs = loadLogs();
+
   logs.forEach(ent => {
     const li = document.createElement("li");
     li.className = "card";
 
     const errText = ent.err.length ? ent.err.join(", ") : "—";
     li.innerHTML = `
-      <div><strong>${fmt(ent.ts)}</strong> / ${ent.profile} / 過負荷 ${ent.overload}</div>
-      <div class="muted">ERR: ${errText}</div>
+      <div><strong>${fmt(ent.ts)}</strong> / ${escapeHtml(ent.profile)} / 過負荷 ${ent.overload}</div>
+      <div class="muted">ERR: ${escapeHtml(errText)}</div>
       ${ent.note ? `<div>${escapeHtml(ent.note)}</div>` : ""}
       ${(ent.boundaryTpl || ent.boundaryNote) ? `<div class="muted">境界: ${escapeHtml((ent.boundaryTpl||"") + (ent.boundaryNote?(" / "+ent.boundaryNote):""))}</div>` : ""}
       <div class="row" style="margin-top:10px;">
         <button data-del="${ent.id}" class="danger">削除</button>
       </div>
     `;
+
     li.querySelector("[data-del]").addEventListener("click", () => {
       const next = loadLogs().filter(x => x.id !== ent.id);
       saveLogs(next);
@@ -123,10 +152,6 @@ function renderList() {
 
     ul.appendChild(li);
   });
-}
-
-function escapeHtml(s) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 }
 
 // --- Export / Import ---
@@ -165,17 +190,117 @@ document.getElementById("wipeBtn").addEventListener("click", () => {
   }
 });
 
-// --- Diagnosis (YES/NO) ---
-const DIAG = [
-  { id: "tired", q: "今、疲れている？", yes: "resident", no: "distanceRisk" },
-  { id: "resident", q: "“支える役/判断役”を続けている？", yes: "hasEnd", no: "responsibility" },
-  { id: "hasEnd", q: "終了条件（いつまで/どこまで）が明示されている？", yes: "responsibility", no: "RES_ERR_001" },
-  { id: "responsibility", q: "責任の所在は明確？（誰が決める？）", yes: "emotional", no: "RES_ERR_003" },
-  { id: "emotional", q: "相手の感情を“処理”してない？（受信しすぎ）", yes: "RES_ERR_004", no: "distanceRisk" },
-  { id: "distanceRisk", q: "距離を取ると関係が壊れそうに感じる？", yes: "test", no: "night" },
-  { id: "test", q: "相手が試し行為（嫉妬/沈黙/既読無視）をしてる？", yes: "RES_ERR_203", no: "RES_ERR_102" },
-  { id: "night", q: "夜に結論を出したくなってる？", yes: "RES_ERR_005", no: "RES_OK" }
+// --------------------
+// Diagnosis: Top 3 scoring + Apply to chips
+// --------------------
+const DIAG_Q = [
+  {
+    id: "tired",
+    q: "今、疲れている？",
+    yes: { "001": 2, "004": 1, "005": 1, "003": 1 },
+    no:  { }
+  },
+  {
+    id: "resident",
+    q: "“支える役/判断役”を続けている？",
+    yes: { "001": 3, "104": 2, "004": 1 },
+    no:  { "005": 1 }
+  },
+  {
+    id: "hasEnd",
+    q: "終了条件（いつまで/どこまで）が明示されている？",
+    yes: { },
+    no:  { "001": 4, "003": 2, "104": 1 }
+  },
+  {
+    id: "responsibility",
+    q: "責任の所在は明確？（誰が決める？）",
+    yes: { },
+    no:  { "003": 4, "001": 1 }
+  },
+  {
+    id: "emotional",
+    q: "相手の感情を“処理”してない？（受信しすぎ）",
+    yes: { "004": 4, "104": 2, "001": 1 },
+    no:  { }
+  },
+  {
+    id: "distanceRisk",
+    q: "距離を取ると関係が壊れそうに感じる？",
+    yes: { "102": 3, "201": 1, "104": 1 },
+    no:  { }
+  },
+  {
+    id: "test",
+    q: "相手が試し行為（嫉妬/沈黙/既読無視）をしてる？",
+    yes: { "203": 5, "202": 2 },
+    no:  { "102": 2 }
+  },
+  {
+    id: "night",
+    q: "夜に結論を出したくなってる？",
+    yes: { "005": 4, "003": 1 },
+    no:  { }
+  }
 ];
+
+function getErrMeta(code) {
+  const ref = ERR_CODES.find(e => e.code === code);
+  if (!ref) return { sev: "Info", name: "不明", quick: "距離復帰／範囲を決める" };
+  return ref;
+}
+
+function profileBoost(profile, scores) {
+  // 軽い補正（“現実の起きやすさ”を反映）
+  if (profile === "恋愛") {
+    scores["201"] = (scores["201"] || 0) + 1;
+    scores["202"] = (scores["202"] || 0) + 1;
+  }
+  if (profile === "仕事/研究") {
+    scores["003"] = (scores["003"] || 0) + 1;
+    scores["301"] = (scores["301"] || 0) + 1;
+  }
+  if (profile === "相談/友人") {
+    scores["004"] = (scores["004"] || 0) + 1;
+    scores["104"] = (scores["104"] || 0) + 1;
+    scores["101"] = (scores["101"] || 0) + 1;
+  }
+  if (profile === "単独") {
+    scores["005"] = (scores["005"] || 0) + 1;
+  }
+  return scores;
+}
+
+function sortTop(scores) {
+  const arr = Object.entries(scores)
+    .filter(([,v]) => v > 0)
+    .map(([code, score]) => {
+      const meta = getErrMeta(code);
+      return {
+        code,
+        score,
+        sev: meta.sev,
+        sevRank: SEVERITY_RANK[meta.sev] ?? 0,
+        name: meta.name,
+        quick: meta.quick
+      };
+    });
+
+  arr.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    if (b.sevRank !== a.sevRank) return b.sevRank - a.sevRank;
+    return a.code.localeCompare(b.code);
+  });
+
+  if (arr.length === 0) {
+    return [{ code: "OK", score: 0, sev: "Info", sevRank: 0, name: "Monitor", quick: "今日は大丈夫。ログだけ残す" }];
+  }
+  return arr.slice(0, 3);
+}
+
+function hasCritical(top) {
+  return top.some(t => t.sev === "Critical");
+}
 
 function renderDiag() {
   const box = document.getElementById("diagBox");
@@ -183,55 +308,104 @@ function renderDiag() {
   box.innerHTML = "";
   res.innerHTML = "<div class='muted'>開始を押してね。</div>";
 
-  let cur = DIAG[0].id;
+  let idx = 0;
+  let scores = {};
 
   const startBtn = document.createElement("button");
   startBtn.textContent = "開始";
   startBtn.className = "primary";
-  startBtn.addEventListener("click", () => step(cur));
+  startBtn.addEventListener("click", () => step());
   box.appendChild(startBtn);
 
-  function step(id) {
-    const node = DIAG.find(x => x.id === id);
-    if (!node) return;
-    box.innerHTML = `<div class="card"><div><strong>${node.q}</strong></div>
-      <div class="row" style="margin-top:10px;">
-        <button id="yesBtn" class="primary">YES</button>
-        <button id="noBtn">NO</button>
-      </div>
-    </div>`;
+  function step() {
+    if (idx >= DIAG_Q.length) return finish();
+    const node = DIAG_Q[idx];
 
-    document.getElementById("yesBtn").addEventListener("click", () => next(node.yes));
-    document.getElementById("noBtn").addEventListener("click", () => next(node.no));
-  }
-
-  function next(to) {
-    if (to.startsWith("RES_")) return showResult(to);
-    cur = to;
-    step(cur);
-  }
-
-  function showResult(code) {
-    const map = {
-      "RES_ERR_001": ["001","常駐要求過負荷","範囲・期限の宣言／距離復帰"],
-      "RES_ERR_003": ["003","責任未定義ループ","『誰が決める？』を確定"],
-      "RES_ERR_004": ["004","感情受信飽和","相談を時間枠化／回線を細く"],
-      "RES_ERR_005": ["005","意味過剰生成","夜に判断しない／身体接地"],
-      "RES_ERR_102": ["102","基準点誤認","決定を相手に返す質問"],
-      "RES_ERR_203": ["203","反応テスト検知","不可宣言／継続なら離脱"],
-      "RES_OK": ["OK","Monitor","今日は大丈夫。ログだけ残す"]
-    };
-    const [c, title, quick] = map[code] || ["?","不明","いったん距離復帰"];
-    const ref = ERR_CODES.find(e => e.code === c);
-    const sev = ref?.sev ? `（${ref.sev}）` : "";
-    res.innerHTML = `
-      <div><strong>結果：</strong> ${c} ${title} ${sev}</div>
-      <div class="muted" style="margin-top:6px;"><strong>即応：</strong> ${quick}</div>
-      ${ref?.quick ? `<div class="muted"><strong>メモ：</strong> ${ref.quick}</div>` : ""}
-      <div style="margin-top:10px;">
-        <button id="restartBtn">もう一回</button>
+    box.innerHTML = `
+      <div class="card">
+        <div><strong>${escapeHtml(node.q)}</strong></div>
+        <div class="row" style="margin-top:10px;">
+          <button id="yesBtn" class="primary">YES</button>
+          <button id="noBtn">NO</button>
+        </div>
+        <div class="muted" style="margin-top:8px;">${idx+1} / ${DIAG_Q.length}</div>
       </div>
     `;
+
+    document.getElementById("yesBtn").addEventListener("click", () => apply(node.yes));
+    document.getElementById("noBtn").addEventListener("click", () => apply(node.no));
+  }
+
+  function apply(addMap) {
+    for (const [code, pts] of Object.entries(addMap || {})) {
+      scores[code] = (scores[code] || 0) + pts;
+    }
+    idx += 1;
+    step();
+  }
+
+  function finish() {
+    const profile = document.getElementById("profile")?.value || "その他";
+    scores = profileBoost(profile, scores);
+
+    const top = sortTop(scores);
+    const critical = hasCritical(top);
+
+    const banner = critical
+      ? `<div class="card" style="border-color:#b00020;">
+           <div style="font-weight:700;color:#b00020;">⚠ Critical 検知</div>
+           <div class="muted">まず #1 の即応を最優先。必要なら距離復帰＋範囲/期限の再設定。</div>
+         </div>`
+      : `<div class="card"><div class="muted">Criticalなし。#1から順に軽く当てていく。</div></div>`;
+
+    const rows = top.map((t, i) => {
+      if (t.code === "OK") {
+        return `
+          <div class="card">
+            <div><strong>#${i+1} OK（Monitor）</strong></div>
+            <div class="muted" style="margin-top:6px;"><strong>即応：</strong> ${escapeHtml(t.quick)}</div>
+          </div>
+        `;
+      }
+      return `
+        <div class="card">
+          <div><strong>#${i+1} ${t.code} ${escapeHtml(t.name)}</strong>
+            <span class="muted">（${escapeHtml(t.sev)} / score ${t.score}）</span>
+          </div>
+          <div class="muted" style="margin-top:6px;"><strong>即応：</strong> ${escapeHtml(t.quick)}</div>
+        </div>
+      `;
+    }).join("");
+
+    // Apply button (top 1-3) to input chips
+    const codesToApply = top.filter(t => t.code !== "OK").map(t => t.code);
+
+    res.innerHTML = `
+      ${banner}
+      <div class="card">
+        <div><strong>結果：上位3候補</strong> <span class="muted">（プロファイル：${escapeHtml(profile)}）</span></div>
+        <div class="muted" style="margin-top:6px;">
+          複合要因が前提。まず #1 を実施し、必要なら #2/#3 を追加。
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <button id="applyBtn" class="primary" ${codesToApply.length ? "" : "disabled"}>この結果をERR候補に反映</button>
+          <button id="restartBtn">もう一回</button>
+        </div>
+        <div class="muted" style="margin-top:8px;">反映すると「入力」タブのERR候補がこの3つに切り替わる。</div>
+      </div>
+      ${rows}
+    `;
+
     document.getElementById("restartBtn").addEventListener("click", renderDiag);
+
+    const applyBtn = document.getElementById("applyBtn");
+    applyBtn?.addEventListener("click", () => {
+      // Switch to input tab, apply chips
+      document.querySelector('nav button[data-tab="log"]').click();
+      setChipsFromCodes(codesToApply);
+      // ついでに一言メモを入れたい場合はここで note に追記もできる
+    });
+
+    box.innerHTML = `<div class="card"><div class="muted">診断が完了しました。</div></div>`;
   }
 }
