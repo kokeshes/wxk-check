@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>YJ-WXK-01 取扱説明書（完全版）</title>
+  <style>
+    :root{
+      --bg:#0f0f10; --card:#161618; --text:#f2f2f2; --muted:#b9b9b9;
+      --line:#2a2a2d; --accent:#ffffff; --danger:#ff4d6d;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans JP", sans-serif;
+      --w: 980px;
+    }
+    @media (prefers-color-scheme: light){
+      :root{ --bg:#f6f6f6; --card:#ffffff; --text:#111; --muted:#555; --line:#e2e2e2; --accent:#111; }
+    }
+    body{ margin:0; font-family:var(--sans); background:var(--bg); color:var(--text); line-height:1.7; }
+    header{ position:sticky; top:0; backdrop-filter: blur(10px);
+      background: color-mix(in oklab, var(--bg) 88%, transparent);
+      border-bottom:1px solid var(--line); }
+    .wrap{ max-width:var(--w); margin:0 auto; padding:18px 14px; }
+    h1{ font-size:22px; margin:0; letter-spacing:.2px; }
+    .sub{ color:var(--muted); font-size:13px; margin-top:6px; }
+    .grid{ display:grid; grid-template-columns: 1fr; gap:14px; }
+    @media (min-width: 860px){ .grid{ grid-template-columns: 280px 1fr; } }
+    nav{ border:1px solid var(--line); background:var(--card); border-radius:14px; padding:12px; position:sticky; top:76px; height:fit-content; }
+    nav a{ display:block; padding:8px 10px; border-radius:10px; color:var(--text); text-decoration:none; }
+    nav a:hover{ background: color-mix(in oklab, var(--card) 70%, var(--accent) 8%); }
+    .card{ border:1px solid var(--line); background:var(--card); border-radius:16px; padding:14px 14px; }
+    h2{ font-size:18px; margin:18px 0 8px; }
+    h3{ font-size:15px; margin:16px 0 6px; color: var(--accent); }
+    code, .mono{ font-family:var(--mono); }
+    .tag{ display:inline-block; font-family:var(--mono); font-size:12px; padding:3px 8px; border:1px solid var(--line); border-radius:999px; color:var(--muted); margin-right:6px; }
+    .danger{ color:var(--danger); font-weight:700; }
+    .hr{ height:1px; background:var(--line); margin:16px 0; }
+    ul{ margin: 8px 0 0 18px; }
+    .small{ font-size:13px; color:var(--muted); }
+    .topbar{ display:flex; gap:10px; align-items:center; justify-content:space-between; }
+    .btn{ display:inline-block; padding:8px 10px; border-radius:12px; border:1px solid var(--line);
+      background:var(--card); color:var(--text); text-decoration:none; font-size:13px; }
+    .btn:hover{ background: color-mix(in oklab, var(--card) 70%, var(--accent) 8%); }
+    footer{ color:var(--muted); font-size:12px; padding:22px 14px 34px; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap topbar">
+    <div>
+      <h1>YJ-WXK-01 取扱説明書（完全版）</h1>
+      <div class="sub">型番：<span class="mono">YJ-WXK-01</span> / 異名：WAKINYAN / 分類：イベント駆動・非侵襲高感度・短期高出力</div>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <a class="btn" href="../index.html">← チェックアプリへ</a>
+      <a class="btn" href="#err">エラーコード</a>
+      <a class="btn" href="#ops">運用原則</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap grid">
+  <nav>
+    <div class="small">目次</div>
+    <a href="#preface">序文</a>
+    <a href="#core">存在構造（最終定義）</a>
+    <a href="#iso">ワキンヤン・タンカとの同型性</a>
+    <a href="#principles">基本動作原理</a>
+    <a href="#love">恋愛仕様</a>
+    <a href="#animals">動物に好かれる章</a>
+    <a href="#papers">論文・文章生成特性</a>
+    <a href="#err">エラーコード一覧（要点）</a>
+    <a href="#ops">正しい運用原則</a>
+    <a href="#emergency">緊急停止カード</a>
+    <a href="#notes">付記</a>
+  </nav>
+
+  <main class="card">
+    <section id="preface">
+      <span class="tag">DOCUMENT</span><span class="tag">REV.FULL</span>
+      <h2>序文</h2>
+      <p>
+        これは自己賛美でも呪文でもなく、<strong>運用のための仕様書</strong>である。
+        「なぜ同じ地点で壊れ、同じ地点で信頼され、同じ誤解を受けるのか」を、
+        構造として読み解くために編まれた。
+      </p>
+    </section>
+
+    <div class="hr"></div>
+
+    <section id="core">
+      <h2>存在構造（最終定義）</h2>
+      <p>
+        <strong>YJ-WXK-01 は、意味・判断・倫理を“生む”存在ではなく、通過させる（翻訳・媒介する）存在</strong>である。
+        そのため「中心ではないのに不在でもいられない」「常駐すると壊れるが、引くと場が回る」という矛盾を持つ。
+      </p>
+      <ul>
+        <li>常駐要求に弱い（Resident負荷）</li>
+        <li>境界線が生命線（Boundaryが無いと焼損）</li>
+        <li>危機・締切・決断点で最大出力（イベント駆動）</li>
+      </ul>
+    </section>
+
+    <div class="hr"></div>
+
+    <section id="iso">
+      <h2>ワキンヤン・タンカとの同型性</h2>
+      <p>
+        ワキンヤン・タンカは雷そのものではなく、<strong>天と地のあいだに立ち、力を“雷”として翻訳して通過させる媒介</strong>である。
+        YJ-WXK-01 もまた、力を直接振るうより、<strong>場・判断・意味の流れを整える媒介体</strong>として作動する。
+      </p>
+      <h3>同型性の核心</h3>
+      <ul>
+        <li>常駐しない（必要な瞬間にのみ顕現）</li>
+        <li>場を変える（空気・判断の基準点を作る）</li>
+        <li>直接支配しない（侵入せず、翻訳で導く）</li>
+      </ul>
+      <h3>決定的な差異</h3>
+      <p>
+        ワキンヤンは壊れないが、YJ-WXK-01 は<strong>人間の身体と感情に実装</strong>されているため壊れる。
+        よって必要なのは使命感ではなく<strong>制御（境界・冷却・離脱条件）</strong>である。
+      </p>
+    </section>
+
+    <div class="hr"></div>
+
+    <section id="principles">
+      <h2>基本動作原理</h2>
+      <h3>原理A：非侵襲性</h3>
+      <p>近づきすぎず、詰めず、奪わず、操作しない。結果として相手の防御が解除される。</p>
+      <h3>原理B：判断一貫性</h3>
+      <p>何でも言わないが、言う時は迷いを減らす。相手が“基準点”と誤認しやすい。</p>
+      <h3>原理C：イベント駆動</h3>
+      <p>危機・締切・決断点で最大出力。平時に常駐を求められると破綻しやすい。</p>
+    </section>
+
+    <div class="hr"></div>
+
+    <section id="love">
+      <h2>恋愛仕様（実運用ログ反映）</h2>
+      <ul>
+        <li><strong>数が多い / 愛情表現が熱烈 / 破綻も多い</strong> —— これは異常ではなく仕様。</li>
+        <li>非侵襲×深度×誠実が相手の防御を解除し、相手側が「この安心は続く」と誤認しやすい。</li>
+        <li>相手が常駐を期待し、役割を預け、感情処理を委ねると、冷却（距離・離脱）が発動する。</li>
+      </ul>
+      <p class="small">
+        ※“熱烈さ”は嘘ではなく、その瞬間は100%本気。ただし短期高出力であり、常駐保証ではない。
+      </p>
+    </section>
+
+    <div class="hr"></div>
+
+    <section id="animals">
+      <h2>動物に好かれる章</h2>
+      <p>
+        初見に懐かない犬・猫に好かれやすい理由は、
+        <strong>侵入しないのに読める</strong>（圧がない／意図が薄い／期待が少ない／予測可能性が高い）ため。
+        動物にとっては<strong>安全圏判定</strong>が起きやすい。
+      </p>
+      <p class="small">
+        重要：再現しようとしない（演出すると圧になる）。触らない・騒がない・そのままにする。
+      </p>
+    </section>
+
+    <div class="hr"></div>
+
+    <section id="papers">
+      <h2>論文・文章生成特性</h2>
+      <ul>
+        <li>主張で殴らず、前提を整え、概念を翻訳し、議論を“起きにくくする”</li>
+        <li>派手さより耐久性。長期的に参照される文章になりやすい</li>
+        <li>弱点：前提整備に時間を溶かす（完璧配置の罠）</li>
+      </ul>
+    </section>
+
+    <div class="hr"></div>
+
+    <section id="err">
+      <h2>エラーコード一覧（要点）</h2>
+      <p class="small">詳細版はチェックアプリ側の運用ログとセットで使う想定。ここでは最重要だけ抜粋。</p>
+
+      <h3><span class="danger">Critical</span></h3>
+      <ul>
+        <li><code>WXK-ERR-001</code> 常駐要求過負荷：終了条件なし → 範囲/期限宣言＋距離復帰</li>
+        <li><code>WXK-ERR-002</code> 境界侵害：同意軽視/詰め → 中断＋距離復帰</li>
+        <li><code>WXK-ERR-202</code> 曖昧関係長期化：定義回避 → 定義要求 or 離脱</li>
+        <li><code>WXK-ERR-203</code> 反応テスト検知：嫉妬/沈黙/既読無視 → 不可宣言、継続なら終了</li>
+      </ul>
+
+      <h3>High</h3>
+      <ul>
+        <li><code>WXK-ERR-003</code> 責任未定義ループ：誰も決めない → 決定者を確定</li>
+        <li><code>WXK-ERR-004</code> 感情受信飽和：受信しすぎ → 時間枠化</li>
+        <li><code>WXK-ERR-005</code> 意味過剰生成：夜に結論衝動 → 判断停止＋接地</li>
+        <li><code>WXK-ERR-104</code> 役割化・装置化：相談係固定 → 役割を減らす</li>
+      </ul>
+    </section>
+
+    <div class="hr"></div>
+
+    <section id="ops">
+      <h2>正しい運用原則</h2>
+      <ol>
+        <li><strong>常駐しない</strong>（平時は“ただの人間”に戻す）</li>
+        <li><strong>役割を限定</strong>（翻訳はするが決定は請け負わない）</li>
+        <li><strong>終了条件を先に決める</strong>（頻度・時間・期限）</li>
+        <li><strong>身体に戻る</strong>（接地：風呂・運動・睡眠・食）</li>
+        <li><strong>雷を人格にしない</strong>（使命感で燃えない）</li>
+      </ol>
+    </section>
+
+    <div class="hr"></div>
+
+    <section id="emergency">
+      <h2>緊急停止カード</h2>
+      <p class="danger">ERR-001 / ERR-002 / ERR-202 / ERR-203 のいずれかが出たら「即停止」</p>
+      <ol>
+        <li>その場の接触・議論を止める</li>
+        <li>距離を戻す（返信/接触頻度を落とす）</li>
+        <li>範囲・期限・NOの自由を再設定</li>
+        <li>守れない相手/場からは離脱</li>
+      </ol>
+    </section>
+
+    <div class="hr"></div>
+
+    <section id="notes">
+      <h2>付記</h2>
+      <p>
+        この説明書は他人に理解させるための武器ではなく、
+        <strong>自分を削らせない境界線のための文書</strong>である。
+        雷を通すのは必要な瞬間だけでいい。
+      </p>
+      <p class="small">最終改訂：<span class="mono">Rev.FULL</span></p>
+    </section>
+  </main>
+</div>
+
+<footer class="wrap">
+  <div>© YJ-WXK-01 Manual. Hosted on GitHub Pages.</div>
+</footer>
+</body>
+</html>
