@@ -42,6 +42,22 @@
       background:var(--card); color:var(--text); text-decoration:none; font-size:13px; }
     .btn:hover{ background: color-mix(in oklab, var(--card) 70%, var(--accent) 8%); }
     footer{ color:var(--muted); font-size:12px; padding:22px 14px 34px; }
+    /* --- Mobile TOC toggle --- */
+#tocBtn { display:none; }
+
+@media (max-width: 859px){
+  /* スマホは目次をデフォルト閉 */
+  #toc { display:none; }
+  #tocBtn { display:inline-block; }
+
+  /* 開いた時だけ表示 */
+  body.toc-open #toc { display:block; }
+  body.toc-open main.card { display:none; } /* 目次表示中は本文を隠す（邪魔にならない） */
+
+  /* 目次をスマホ用に大きめに */
+  #toc { position: static; top:auto; }
+}
+
   </style>
 </head>
 <body>
@@ -51,23 +67,25 @@
       <h1>YJ-WXK-01 取扱説明書（完全版）</h1>
       <div class="sub">型番：<span class="mono">YJ-WXK-01</span> / 異名：WAKINYAN / 分類：イベント駆動・非侵襲高感度・短期高出力</div>
     </div>
-    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-      <a class="btn" href="../index.html">← チェックアプリへ</a>
-      <a class="btn" href="#err">エラーコード</a>
-      <a class="btn" href="#ops">運用原則</a>
-    </div>
+<div style="display:flex; gap:8px; flex-wrap:wrap;">
+  <a class="btn" href="../index.html">← チェックアプリへ</a>
+  <button class="btn" id="tocBtn" type="button">目次</button>
+  <a class="btn" href="#err">エラーコード</a>
+  <a class="btn" href="#ops">運用原則</a>
+</div>
+
   </div>
 </header>
 
 <div class="wrap grid">
-  <nav>
+  <nav　id="toc">
     <div class="small">目次</div>
     <a href="#preface">序文</a>
     <a href="#core">存在構造（最終定義）</a>
     <a href="#iso">ワキンヤン・タンカ(ネイティブ・アメリカンの神話生物)との同型性</a>
     <a href="#principles">基本動作原理</a>
     <a href="#love">恋愛仕様</a>
-    <a href="#animals">動物に好かれる章</a>
+    <a href="#animals">動物に好かれる</a>
     <a href="#papers">論文・文章生成特性</a>
     <a href="#err">エラーコード一覧（要点）</a>
     <a href="#ops">正しい運用原則</a>
@@ -111,13 +129,13 @@
       </p>
       <h3>同型性の核心</h3>
       <ul>
-        <li>常駐しない（必要な瞬間にのみ顕現）</li>
+        <li>力が常駐しない（必要な瞬間にのみ顕現）</li>
         <li>場を変える（空気・判断の基準点を作る）</li>
         <li>直接支配しない（侵入せず、翻訳で導く）</li>
       </ul>
       <h3>決定的な差異</h3>
       <p>
-        ワキンヤンは壊れないが、YJ-WXK-01 は<strong>人間の身体と感情に実装</strong>されているため壊れる。
+        ワキンヤンは壊れないが、YJ-WXK-01 はワキンヤン的性質を<strong>人間の身体と感情に実装</strong>されているため壊れる。
         よって必要なのは使命感ではなく<strong>制御（境界・冷却・離脱条件）</strong>である。
       </p>
     </section>
@@ -129,9 +147,9 @@
       <h3>原理A：非侵襲性</h3>
       <p>近づきすぎず、詰めず、奪わず、操作しない。結果として相手の防御が解除される。</p>
       <h3>原理B：判断一貫性</h3>
-      <p>何でも言わないが、言う時は迷いを減らす。相手が“基準点”と誤認しやすい。</p>
+      <p>何でも言わないが、言う時は迷いを減らす。相手が“基準点”と認識しやすい。</p>
       <h3>原理C：イベント駆動</h3>
-      <p>危機・締切・決断点で最大出力。平時に常駐を求められると破綻しやすい。</p>
+      <p>危機・締切・決断点で最大出力。平時にも常に最大出力を求められると破綻しやすい。</p>
     </section>
 
     <div class="hr"></div>
@@ -140,11 +158,11 @@
       <h2>恋愛仕様（実運用ログ反映）</h2>
       <ul>
         <li><strong>数が多い / 愛情表現が熱烈 / 破綻も多い</strong> —— これは異常ではなく仕様。</li>
-        <li>非侵襲×深度×誠実が相手の防御を解除し、相手側が「この安心は続く」と誤認しやすい。</li>
+        <li>非侵襲×深度×誠実が相手の防御を解除し、相手側が「この安心は続く」「何をしても許される」と認識しやすい。</li>
         <li>相手が常駐を期待し、役割を預け、感情処理を委ねると、冷却（距離・離脱）が発動する。</li>
       </ul>
       <p class="small">
-        ※“熱烈さ”は嘘ではなく、その瞬間は100%本気。ただし短期高出力であり、常駐保証ではない。
+        ※“熱烈さ”は嘘ではなく、その瞬間は100%本気である。
       </p>
     </section>
 
@@ -153,7 +171,7 @@
     <section id="animals">
       <h2>動物に好かれる章</h2>
       <p>
-        初見に懐かない犬・猫に好かれやすい理由は、
+        この個体が初見に懐かない犬・猫に好かれやすい理由は、
         <strong>侵入しないのに読める</strong>（圧がない／意図が薄い／期待が少ない／予測可能性が高い）ため。
         動物にとっては<strong>安全圏判定</strong>が起きやすい。
       </p>
@@ -169,7 +187,7 @@
       <ul>
         <li>主張で殴らず、前提を整え、概念を翻訳し、議論を“起きにくくする”</li>
         <li>派手さより耐久性。長期的に参照される文章になりやすい</li>
-        <li>弱点：前提整備に時間を溶かす（完璧配置の罠）</li>
+        <li>弱点：前提整備に時間を溶かす（完璧主義の罠）</li>
       </ul>
     </section>
 
@@ -231,7 +249,395 @@
         <strong>自分を削らせない境界線のための文書</strong>である。
         雷を通すのは必要な瞬間だけでよい。
 　  </p>
-      <p class="small">最終改訂：<span class="mono">Rev.FULL</span></p>
+<!-- =========================================================
+  YJ-WXK-01 エラーコード（完全版）  ※このまま index.html に貼り付けOK
+  - 既存UIが「tab」構成なら、そのまま動きます
+  - 追加CSS/JSはこのブロック内に全部同梱（軽量）
+========================================================= -->
+
+<section id="tab-errorcodes" class="tab">
+  <h2>エラーコード（完全版）</h2>
+
+  <p class="muted">
+    本機（YJ-WXK-01）は「症状＝故障」ではなく「状態＝運用上の警報」としてエラーを出します。
+    まずは <strong>安全確保 → 原因切り分け → 復旧手順</strong> の順で対処してください。
+  </p>
+
+  <div class="cardlike" style="padding:12px;border:1px solid rgba(127,127,127,.25);border-radius:12px;margin:12px 0;">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <input id="errSearch" type="search" placeholder="検索：例）睡眠 / 依存 / 怒り / E120 / 緊急" 
+             style="flex:1;min-width:240px;padding:10px 12px;border-radius:10px;border:1px solid rgba(127,127,127,.35);">
+      <button id="errReset" type="button"
+              style="padding:10px 12px;border-radius:10px;border:1px solid rgba(127,127,127,.35);background:transparent;">
+        リセット
+      </button>
+    </div>
+    <p class="muted" style="margin:10px 0 0;">
+      表内をフィルタします（コード/症状/原因/対処/タグに反応）。
+    </p>
+  </div>
+
+  <div class="err-legend" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px;">
+    <span class="badge sev0">INFO</span>
+    <span class="badge sev1">WARN</span>
+    <span class="badge sev2">ERROR</span>
+    <span class="badge sev3">CRITICAL</span>
+    <span class="muted" style="margin-left:6px;">（重大度：低 → 高）</span>
+  </div>
+
+  <style>
+    /* 既存CSSと喧嘩しにくい範囲で最小限 */
+    #tab-errorcodes .muted { opacity:.72; }
+    #tab-errorcodes .badge{
+      display:inline-flex;align-items:center;justify-content:center;
+      font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(127,127,127,.35);
+      letter-spacing:.04em;
+    }
+    #tab-errorcodes .sev0{ opacity:.85; }
+    #tab-errorcodes .sev1{ }
+    #tab-errorcodes .sev2{ font-weight:600; }
+    #tab-errorcodes .sev3{ font-weight:700; text-transform:uppercase; }
+
+    #tab-errorcodes table{ width:100%; border-collapse:collapse; overflow:hidden; border-radius:12px; }
+    #tab-errorcodes th, #tab-errorcodes td{
+      padding:10px 10px; border-bottom:1px solid rgba(127,127,127,.22); vertical-align:top;
+      text-align:left;
+    }
+    #tab-errorcodes thead th{
+      position:sticky; top:0; background:rgba(127,127,127,.08); backdrop-filter: blur(6px);
+      z-index:1;
+    }
+    #tab-errorcodes tr:hover td{ background:rgba(127,127,127,.06); }
+    #tab-errorcodes code{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12.5px;
+      padding:2px 6px;border-radius:8px;border:1px solid rgba(127,127,127,.25);
+      background:rgba(127,127,127,.08);
+      white-space:nowrap;
+    }
+    #tab-errorcodes details{
+      border:1px solid rgba(127,127,127,.22);
+      border-radius:12px;padding:10px 12px;margin:12px 0;
+      background:rgba(127,127,127,.04);
+    }
+    #tab-errorcodes details > summary{ cursor:pointer; font-weight:600; }
+    #tab-errorcodes .tags{ margin-top:6px; display:flex; gap:6px; flex-wrap:wrap; }
+    #tab-errorcodes .tag{
+      font-size:12px;padding:2px 8px;border-radius:999px;
+      border:1px solid rgba(127,127,127,.25);opacity:.9;
+    }
+    #tab-errorcodes .nowrap{ white-space:nowrap; }
+    #tab-errorcodes .small{ font-size:12px; opacity:.9; }
+  </style>
+
+  <details open>
+    <summary>最優先の安全手順（CRITICAL時）</summary>
+    <ol style="margin:10px 0 0; padding-left:18px;">
+      <li><strong>身体の安全</strong>：睡眠・水分・食事・体温・呼吸を先に整える（議論/分析は後）。</li>
+      <li><strong>環境の安全</strong>：刺激源（人/通知/場所）を一時遮断。必要なら退避・帰宅。</li>
+      <li><strong>連絡線</strong>：信頼できる相手 or 店長/医療/相談先に短文で状況共有。</li>
+      <li><strong>復旧</strong>：この表の「一次対処」だけ実行。原因分析は回復後。</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>重大度の読み方</summary>
+    <ul style="margin:10px 0 0; padding-left:18px;">
+      <li><span class="badge sev0">INFO</span>：状態ログ。放置OKだが、傾向は観測価値あり。</li>
+      <li><span class="badge sev1">WARN</span>：悪化の前兆。軽い介入（休憩/補給/遮断）で戻す。</li>
+      <li><span class="badge sev2">ERROR</span>：運用継続で破綻しやすい。行動を変える必要あり。</li>
+      <li><span class="badge sev3">CRITICAL</span>：安全優先。対人/作業/移動の継続は中止が基本。</li>
+    </ul>
+  </details>
+
+  <h3 style="margin-top:18px;">一覧</h3>
+
+  <div style="overflow:auto;border:1px solid rgba(127,127,127,.22);border-radius:12px;">
+    <table id="errTable" aria-label="YJ-WXK-01 error codes">
+      <thead>
+        <tr>
+          <th class="nowrap">重大度</th>
+          <th class="nowrap">コード</th>
+          <th>症状</th>
+          <th>主原因（よくある順）</th>
+          <th>一次対処（最短で効く）</th>
+          <th class="nowrap">タグ</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <!-- ====== 000 系：情報ログ ====== -->
+        <tr>
+          <td><span class="badge sev0">INFO</span></td>
+          <td><code>E000</code></td>
+          <td>平常運転（異常なし）</td>
+          <td>—</td>
+          <td>継続。ログを残すなら「何が良かったか」を1行。</td>
+          <td><span class="tag">ログ</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev0">INFO</span></td>
+          <td><code>E010</code></td>
+          <td>「雷」出力が安定（集中・快）</td>
+          <td>睡眠/運動/達成感が揃っている</td>
+          <td>過負荷に行く前に休憩を挟む（30–90分ごと）。</td>
+          <td><span class="tag">集中</span> <span class="tag">快</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev0">INFO</span></td>
+          <td><code>E011</code></td>
+          <td>思考が英語モードへ自動切替</td>
+          <td>抽象度上昇／自己距離化の作動</td>
+          <td>議論はOK。感情処理は日本語で一度“着地”させる。</td>
+          <td><span class="tag">認知</span> <span class="tag">距離</span></td>
+        </tr>
+
+        <!-- ====== 100 系：生活基盤（睡眠・栄養・体調） ====== -->
+        <tr>
+          <td><span class="badge sev1">WARN</span></td>
+          <td><code>E100</code></td>
+          <td>軽い睡眠不足：注意散漫／焦燥</td>
+          <td>就寝遅延／カフェイン／画面刺激</td>
+          <td>仮眠20分 or 今夜の就寝目標を固定（時刻を決める）。</td>
+          <td><span class="tag">睡眠</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev1">WARN</span></td>
+          <td><code>E110</code></td>
+          <td>低血糖：イライラ／集中落ち</td>
+          <td>食事間隔が長い／糖質不足</td>
+          <td>水＋糖＋タンパク（例：おにぎり＋ヨーグルト）。</td>
+          <td><span class="tag">栄養</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev1">WARN</span></td>
+          <td><code>E120</code></td>
+          <td>脱水：頭痛／だるさ／めまい</td>
+          <td>水分不足／暖房／運動後</td>
+          <td>水＋塩分を少量。カフェインは後回し。</td>
+          <td><span class="tag">体調</span> <span class="tag">水分</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev2">ERROR</span></td>
+          <td><code>E130</code></td>
+          <td>過負荷（トレ/仕事）：筋疲労＋情緒荒れ</td>
+          <td>負荷の積み過ぎ／休息不足</td>
+          <td>強制デロード（軽く動く日）＋睡眠確保。プロテインは補助。</td>
+          <td><span class="tag">疲労</span> <span class="tag">運動</span></td>
+        </tr>
+
+        <!-- ====== 200 系：対人・境界（ハラスメント等） ====== -->
+        <tr>
+          <td><span class="badge sev1">WARN</span></td>
+          <td><code>E200</code></td>
+          <td>境界が薄くなる：過剰に優しくなる／抱え込む</td>
+          <td>相手の困りごとへの共感過剰</td>
+          <td>「できる/できない」を一文で宣言（長文説明を避ける）。</td>
+          <td><span class="tag">境界</span> <span class="tag">対人</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev2">ERROR</span></td>
+          <td><code>E210</code></td>
+          <td>ハラスメント刺激でフリーズ／反芻が止まらない</td>
+          <td>不意打ちの言動／過去記憶の起動</td>
+          <td>距離確保→記録（事実のみ）→上長/第三者へ共有。</td>
+          <td><span class="tag">ハラスメント</span> <span class="tag">安全</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev3">CRITICAL</span></td>
+          <td><code>E220</code></td>
+          <td>危険接近：相手が踏み込む／自分が引き込まれそう</td>
+          <td>接触頻度増／曖昧な許容／密室</td>
+          <td>接触ルールを固定（時間/場所/回数）＋同席者を入れる。</td>
+          <td><span class="tag">境界</span> <span class="tag">リスク</span></td>
+        </tr>
+
+        <!-- ====== 300 系：気分・感情（怒り/不安/抑うつ） ====== -->
+        <tr>
+          <td><span class="badge sev1">WARN</span></td>
+          <td><code>E300</code></td>
+          <td>焦燥：やることが多すぎて空回り</td>
+          <td>タスク過密／優先度未確定</td>
+          <td>「今日の最小勝利」1つだけ決めて他は保留。</td>
+          <td><span class="tag">焦燥</span> <span class="tag">タスク</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev1">WARN</span></td>
+          <td><code>E310</code></td>
+          <td>怒りの熱：言葉が強くなる／視野が狭い</td>
+          <td>不正の認知／尊厳侵害</td>
+          <td>即返信しない。呼吸→水→5分歩く。文章は“短く”置く。</td>
+          <td><span class="tag">怒り</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev2">ERROR</span></td>
+          <td><code>E320</code></td>
+          <td>不安増幅：最悪想定が止まらない</td>
+          <td>睡眠不足／刺激過多／対人不確実性</td>
+          <td>情報遮断（通知OFF）＋“確認できる事実”だけ紙に書く。</td>
+          <td><span class="tag">不安</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev2">ERROR</span></td>
+          <td><code>E330</code></td>
+          <td>自己否定ループ：恥・罪悪感・罵倒</td>
+          <td>疲労／比較／他者評価への過敏</td>
+          <td>評価軸を外に置く（睡眠/栄養/運動の3点検）→回復優先。</td>
+          <td><span class="tag">自己否定</span></td>
+        </tr>
+
+        <!-- ====== 400 系：依存・衝動（喫煙など） ====== -->
+        <tr>
+          <td><span class="badge sev1">WARN</span></td>
+          <td><code>E400</code></td>
+          <td>渇望（軽）：口寂しさ／手持ち無沙汰</td>
+          <td>習慣回路の起動（時間帯/場所）</td>
+          <td>代替行動を固定（ガム/炭酸/散歩3分）。</td>
+          <td><span class="tag">渇望</span> <span class="tag">習慣</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev2">ERROR</span></td>
+          <td><code>E410</code></td>
+          <td>渇望（強）：思考が奪われる</td>
+          <td>ストレス＋睡眠不足＋空腹の合併</td>
+          <td>まず補給（食/水）→場所移動→5分だけ別タスク。</td>
+          <td><span class="tag">渇望</span> <span class="tag">ストレス</span></td>
+        </tr>
+
+        <!-- ====== 500 系：創作・研究モード（過集中/反芻） ====== -->
+        <tr>
+          <td><span class="badge sev1">WARN</span></td>
+          <td><code>E500</code></td>
+          <td>過集中の前兆：時間感覚が消える</td>
+          <td>面白さによる没入</td>
+          <td>タイマーをかける（45–60分）＋水分を手元に置く。</td>
+          <td><span class="tag">研究</span> <span class="tag">没入</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev2">ERROR</span></td>
+          <td><code>E510</code></td>
+          <td>反芻：同じ一文を考え続ける</td>
+          <td>未確定の論点／対人の曖昧さ</td>
+          <td>“結論は保留”でメモに封印→身体作業に切替（掃除/歩く）。</td>
+          <td><span class="tag">反芻</span> <span class="tag">切替</span></td>
+        </tr>
+
+        <!-- ====== 600 系：関係性・愛着（恋人/孤独） ====== -->
+        <tr>
+          <td><span class="badge sev1">WARN</span></td>
+          <td><code>E600</code></td>
+          <td>寂しさ：連絡を待ちすぎる</td>
+          <td>不確実性／夜間／疲労</td>
+          <td>“待つ時間”を区切る→自分のルーティンへ戻る（風呂/読書）。</td>
+          <td><span class="tag">愛着</span> <span class="tag">孤独</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev2">ERROR</span></td>
+          <td><code>E610</code></td>
+          <td>過剰な自己開示衝動：あとで疲れる</td>
+          <td>安心を求める／酩酊／睡眠薬の影響</td>
+          <td>送信前に“下書き保存”。翌朝に見直す。</td>
+          <td><span class="tag">対人</span> <span class="tag">抑制</span></td>
+        </tr>
+
+        <!-- ====== 700 系：危機（自己傷つけ衝動など） ====== -->
+        <tr>
+          <td><span class="badge sev3">CRITICAL</span></td>
+          <td><code>E700</code></td>
+          <td>自己破壊衝動：安全が揺らぐ</td>
+          <td>強ストレス／侵害／孤立／睡眠不足</td>
+          <td>一人にならない→刺激源から離れる→信頼先に短文連絡→身体の安全確保。</td>
+          <td><span class="tag">危機</span> <span class="tag">安全</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev3">CRITICAL</span></td>
+          <td><code>E710</code></td>
+          <td>現実感の低下：ぼんやり／自分が遠い</td>
+          <td>過覚醒の反動／睡眠不足／強い不安</td>
+          <td>五感接地（冷水/香り/足裏）＋誰かの声を聞く（通話/対面）。</td>
+          <td><span class="tag">離人</span> <span class="tag">接地</span></td>
+        </tr>
+
+        <!-- ====== 800 系：運用上の“仕様” ====== -->
+        <tr>
+          <td><span class="badge sev0">INFO</span></td>
+          <td><code>E800</code></td>
+          <td>仕様：雷は消えない（出力の形が変わるだけ）</td>
+          <td>本機固有特性</td>
+          <td>封じるより“調律”へ。過負荷だけ避ける。</td>
+          <td><span class="tag">仕様</span> <span class="tag">調律</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev0">INFO</span></td>
+          <td><code>E810</code></td>
+          <td>仕様：道具を身体拡張として扱う（精度重視）</td>
+          <td>本機固有特性</td>
+          <td>強みとして運用。疲労時は“精度＞量”に倒す。</td>
+          <td><span class="tag">仕様</span> <span class="tag">技能</span></td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <details>
+    <summary>メンテナンス：エラーが頻発する時の点検チェック</summary>
+    <ul style="margin:10px 0 0; padding-left:18px;">
+      <li><strong>睡眠</strong>：過去3日で不足してない？</li>
+      <li><strong>補給</strong>：水分/塩分/糖/タンパクのどれか欠けてない？</li>
+      <li><strong>刺激</strong>：通知・対人・SNSで神経が焼けてない？</li>
+      <li><strong>負荷</strong>：仕事/筋トレ/卒論が同日に重なってない？</li>
+      <li><strong>境界</strong>：曖昧な約束、密な連絡、相手の問題を背負ってない？</li>
+    </ul>
+  </details>
+
+  <p class="muted small" style="margin-top:12px;">
+    ※この表は “運用のための警報定義” です。
+  </p>
+
+  <script>
+    (function(){
+      const input = document.getElementById('errSearch');
+      const reset = document.getElementById('errReset');
+      const table = document.getElementById('errTable');
+      if(!input || !reset || !table) return;
+
+      const rows = Array.from(table.querySelectorAll('tbody tr'));
+      const normalize = (s) => (s || '').toString().toLowerCase().replace(/\s+/g,' ').trim();
+
+      function applyFilter(){
+        const q = normalize(input.value);
+        rows.forEach(tr => {
+          const text = normalize(tr.innerText);
+          tr.style.display = (!q || text.includes(q)) ? '' : 'none';
+        });
+      }
+
+      input.addEventListener('input', applyFilter);
+      reset.addEventListener('click', () => { input.value=''; applyFilter(); input.focus(); });
+
+      // 初期状態
+      applyFilter();
+    })();
+  </script>
+</section>
+
+      <p class="small">最終改訂：<span class="mono">Rev.1</span></p>
     </section>
   </main>
 </div>
@@ -239,5 +645,22 @@
 <footer class="wrap">
   <div>© YJ-WXK-01 Manual. Hosted on GitHub Pages.</div>
 </footer>
+  <script>
+  const tocBtn = document.getElementById("tocBtn");
+  if (tocBtn) {
+    tocBtn.addEventListener("click", () => {
+      document.body.classList.toggle("toc-open");
+    });
+  }
+  // 目次内リンクを押したら自動で閉じる
+  const toc = document.getElementById("toc");
+  if (toc) {
+    toc.addEventListener("click", (e) => {
+      if (e.target.tagName === "A") {
+        document.body.classList.remove("toc-open");
+      }
+    });
+  }
+</script>
 </body>
 </html>
