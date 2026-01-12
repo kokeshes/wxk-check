@@ -249,7 +249,7 @@
         <strong>自分を削らせない境界線のための文書</strong>である。
         雷を通すのは必要な瞬間だけでよい。
 　  </p>
-      <!-- =========================================================
+<!-- =========================================================
   YJ-WXK-01 エラーコード（完全版）  ※このまま index.html に貼り付けOK
   - 既存UIが「tab」構成なら、そのまま動きます
   - 追加CSS/JSはこのブロック内に全部同梱（軽量）
@@ -386,12 +386,257 @@
         </tr>
 
         <tr>
-          <td><span class="badge sev0">INFO</span></td
+          <td><span class="badge sev0">INFO</span></td>
+          <td><code>E011</code></td>
+          <td>思考が英語モードへ自動切替</td>
+          <td>抽象度上昇／自己距離化の作動</td>
+          <td>議論はOK。感情処理は日本語で一度“着地”させる。</td>
+          <td><span class="tag">認知</span> <span class="tag">距離</span></td>
+        </tr>
 
-      <p>
-        エラーコード完全版
-        
-      </p>
+        <!-- ====== 100 系：生活基盤（睡眠・栄養・体調） ====== -->
+        <tr>
+          <td><span class="badge sev1">WARN</span></td>
+          <td><code>E100</code></td>
+          <td>軽い睡眠不足：注意散漫／焦燥</td>
+          <td>就寝遅延／カフェイン／画面刺激</td>
+          <td>仮眠20分 or 今夜の就寝目標を固定（時刻を決める）。</td>
+          <td><span class="tag">睡眠</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev1">WARN</span></td>
+          <td><code>E110</code></td>
+          <td>低血糖：イライラ／集中落ち</td>
+          <td>食事間隔が長い／糖質不足</td>
+          <td>水＋糖＋タンパク（例：おにぎり＋ヨーグルト）。</td>
+          <td><span class="tag">栄養</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev1">WARN</span></td>
+          <td><code>E120</code></td>
+          <td>脱水：頭痛／だるさ／めまい</td>
+          <td>水分不足／暖房／運動後</td>
+          <td>水＋塩分を少量。カフェインは後回し。</td>
+          <td><span class="tag">体調</span> <span class="tag">水分</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev2">ERROR</span></td>
+          <td><code>E130</code></td>
+          <td>過負荷（トレ/仕事）：筋疲労＋情緒荒れ</td>
+          <td>負荷の積み過ぎ／休息不足</td>
+          <td>強制デロード（軽く動く日）＋睡眠確保。プロテインは補助。</td>
+          <td><span class="tag">疲労</span> <span class="tag">運動</span></td>
+        </tr>
+
+        <!-- ====== 200 系：対人・境界（ハラスメント等） ====== -->
+        <tr>
+          <td><span class="badge sev1">WARN</span></td>
+          <td><code>E200</code></td>
+          <td>境界が薄くなる：過剰に優しくなる／抱え込む</td>
+          <td>相手の困りごとへの共感過剰</td>
+          <td>「できる/できない」を一文で宣言（長文説明を避ける）。</td>
+          <td><span class="tag">境界</span> <span class="tag">対人</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev2">ERROR</span></td>
+          <td><code>E210</code></td>
+          <td>ハラスメント刺激でフリーズ／反芻が止まらない</td>
+          <td>不意打ちの言動／過去記憶の起動</td>
+          <td>距離確保→記録（事実のみ）→上長/第三者へ共有。</td>
+          <td><span class="tag">ハラスメント</span> <span class="tag">安全</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev3">CRITICAL</span></td>
+          <td><code>E220</code></td>
+          <td>危険接近：相手が踏み込む／自分が引き込まれそう</td>
+          <td>接触頻度増／曖昧な許容／密室</td>
+          <td>接触ルールを固定（時間/場所/回数）＋同席者を入れる。</td>
+          <td><span class="tag">境界</span> <span class="tag">リスク</span></td>
+        </tr>
+
+        <!-- ====== 300 系：気分・感情（怒り/不安/抑うつ） ====== -->
+        <tr>
+          <td><span class="badge sev1">WARN</span></td>
+          <td><code>E300</code></td>
+          <td>焦燥：やることが多すぎて空回り</td>
+          <td>タスク過密／優先度未確定</td>
+          <td>「今日の最小勝利」1つだけ決めて他は保留。</td>
+          <td><span class="tag">焦燥</span> <span class="tag">タスク</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev1">WARN</span></td>
+          <td><code>E310</code></td>
+          <td>怒りの熱：言葉が強くなる／視野が狭い</td>
+          <td>不正の認知／尊厳侵害</td>
+          <td>即返信しない。呼吸→水→5分歩く。文章は“短く”置く。</td>
+          <td><span class="tag">怒り</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev2">ERROR</span></td>
+          <td><code>E320</code></td>
+          <td>不安増幅：最悪想定が止まらない</td>
+          <td>睡眠不足／刺激過多／対人不確実性</td>
+          <td>情報遮断（通知OFF）＋“確認できる事実”だけ紙に書く。</td>
+          <td><span class="tag">不安</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev2">ERROR</span></td>
+          <td><code>E330</code></td>
+          <td>自己否定ループ：恥・罪悪感・罵倒</td>
+          <td>疲労／比較／他者評価への過敏</td>
+          <td>評価軸を外に置く（睡眠/栄養/運動の3点検）→回復優先。</td>
+          <td><span class="tag">自己否定</span></td>
+        </tr>
+
+        <!-- ====== 400 系：依存・衝動（喫煙など） ====== -->
+        <tr>
+          <td><span class="badge sev1">WARN</span></td>
+          <td><code>E400</code></td>
+          <td>渇望（軽）：口寂しさ／手持ち無沙汰</td>
+          <td>習慣回路の起動（時間帯/場所）</td>
+          <td>代替行動を固定（ガム/炭酸/散歩3分）。</td>
+          <td><span class="tag">渇望</span> <span class="tag">習慣</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev2">ERROR</span></td>
+          <td><code>E410</code></td>
+          <td>渇望（強）：思考が奪われる</td>
+          <td>ストレス＋睡眠不足＋空腹の合併</td>
+          <td>まず補給（食/水）→場所移動→5分だけ別タスク。</td>
+          <td><span class="tag">渇望</span> <span class="tag">ストレス</span></td>
+        </tr>
+
+        <!-- ====== 500 系：創作・研究モード（過集中/反芻） ====== -->
+        <tr>
+          <td><span class="badge sev1">WARN</span></td>
+          <td><code>E500</code></td>
+          <td>過集中の前兆：時間感覚が消える</td>
+          <td>面白さによる没入</td>
+          <td>タイマーをかける（45–60分）＋水分を手元に置く。</td>
+          <td><span class="tag">研究</span> <span class="tag">没入</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev2">ERROR</span></td>
+          <td><code>E510</code></td>
+          <td>反芻：同じ一文を考え続ける</td>
+          <td>未確定の論点／対人の曖昧さ</td>
+          <td>“結論は保留”でメモに封印→身体作業に切替（掃除/歩く）。</td>
+          <td><span class="tag">反芻</span> <span class="tag">切替</span></td>
+        </tr>
+
+        <!-- ====== 600 系：関係性・愛着（恋人/孤独） ====== -->
+        <tr>
+          <td><span class="badge sev1">WARN</span></td>
+          <td><code>E600</code></td>
+          <td>寂しさ：連絡を待ちすぎる</td>
+          <td>不確実性／夜間／疲労</td>
+          <td>“待つ時間”を区切る→自分のルーティンへ戻る（風呂/読書）。</td>
+          <td><span class="tag">愛着</span> <span class="tag">孤独</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev2">ERROR</span></td>
+          <td><code>E610</code></td>
+          <td>過剰な自己開示衝動：あとで疲れる</td>
+          <td>安心を求める／酩酊／睡眠薬の影響</td>
+          <td>送信前に“下書き保存”。翌朝に見直す。</td>
+          <td><span class="tag">対人</span> <span class="tag">抑制</span></td>
+        </tr>
+
+        <!-- ====== 700 系：危機（自己傷つけ衝動など） ====== -->
+        <tr>
+          <td><span class="badge sev3">CRITICAL</span></td>
+          <td><code>E700</code></td>
+          <td>自己破壊衝動：安全が揺らぐ</td>
+          <td>強ストレス／侵害／孤立／睡眠不足</td>
+          <td>一人にならない→刺激源から離れる→信頼先に短文連絡→身体の安全確保。</td>
+          <td><span class="tag">危機</span> <span class="tag">安全</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev3">CRITICAL</span></td>
+          <td><code>E710</code></td>
+          <td>現実感の低下：ぼんやり／自分が遠い</td>
+          <td>過覚醒の反動／睡眠不足／強い不安</td>
+          <td>五感接地（冷水/香り/足裏）＋誰かの声を聞く（通話/対面）。</td>
+          <td><span class="tag">離人</span> <span class="tag">接地</span></td>
+        </tr>
+
+        <!-- ====== 800 系：運用上の“仕様” ====== -->
+        <tr>
+          <td><span class="badge sev0">INFO</span></td>
+          <td><code>E800</code></td>
+          <td>仕様：雷は消えない（出力の形が変わるだけ）</td>
+          <td>本機固有特性</td>
+          <td>封じるより“調律”へ。過負荷だけ避ける。</td>
+          <td><span class="tag">仕様</span> <span class="tag">調律</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev0">INFO</span></td>
+          <td><code>E810</code></td>
+          <td>仕様：道具を身体拡張として扱う（精度重視）</td>
+          <td>本機固有特性</td>
+          <td>強みとして運用。疲労時は“精度＞量”に倒す。</td>
+          <td><span class="tag">仕様</span> <span class="tag">技能</span></td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <details>
+    <summary>メンテナンス：エラーが頻発する時の点検チェック</summary>
+    <ul style="margin:10px 0 0; padding-left:18px;">
+      <li><strong>睡眠</strong>：過去3日で不足してない？</li>
+      <li><strong>補給</strong>：水分/塩分/糖/タンパクのどれか欠けてない？</li>
+      <li><strong>刺激</strong>：通知・対人・SNSで神経が焼けてない？</li>
+      <li><strong>負荷</strong>：仕事/筋トレ/卒論が同日に重なってない？</li>
+      <li><strong>境界</strong>：曖昧な約束、密な連絡、相手の問題を背負ってない？</li>
+    </ul>
+  </details>
+
+  <p class="muted small" style="margin-top:12px;">
+    ※この表は “運用のための警報定義” です。必要なら今後、あなたの実データ（発生頻度・トリガー）に合わせてコード体系を拡張できます。
+  </p>
+
+  <script>
+    (function(){
+      const input = document.getElementById('errSearch');
+      const reset = document.getElementById('errReset');
+      const table = document.getElementById('errTable');
+      if(!input || !reset || !table) return;
+
+      const rows = Array.from(table.querySelectorAll('tbody tr'));
+      const normalize = (s) => (s || '').toString().toLowerCase().replace(/\s+/g,' ').trim();
+
+      function applyFilter(){
+        const q = normalize(input.value);
+        rows.forEach(tr => {
+          const text = normalize(tr.innerText);
+          tr.style.display = (!q || text.includes(q)) ? '' : 'none';
+        });
+      }
+
+      input.addEventListener('input', applyFilter);
+      reset.addEventListener('click', () => { input.value=''; applyFilter(); input.focus(); });
+
+      // 初期状態
+      applyFilter();
+    })();
+  </script>
+</section>
+
       <p class="small">最終改訂：<span class="mono">Rev.FULL</span></p>
     </section>
   </main>
