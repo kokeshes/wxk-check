@@ -85,7 +85,7 @@
     <a href="#iso">ワキンヤン・タンカ(ネイティブ・アメリカンの神話生物)との同型性</a>
     <a href="#principles">基本動作原理</a>
     <a href="#love">恋愛仕様</a>
-    <a href="#animals">動物に好かれる章</a>
+    <a href="#animals">動物に好かれる</a>
     <a href="#papers">論文・文章生成特性</a>
     <a href="#err">エラーコード一覧（要点）</a>
     <a href="#ops">正しい運用原則</a>
@@ -129,13 +129,13 @@
       </p>
       <h3>同型性の核心</h3>
       <ul>
-        <li>常駐しない（必要な瞬間にのみ顕現）</li>
+        <li>力が常駐しない（必要な瞬間にのみ顕現）</li>
         <li>場を変える（空気・判断の基準点を作る）</li>
         <li>直接支配しない（侵入せず、翻訳で導く）</li>
       </ul>
       <h3>決定的な差異</h3>
       <p>
-        ワキンヤンは壊れないが、YJ-WXK-01 は<strong>人間の身体と感情に実装</strong>されているため壊れる。
+        ワキンヤンは壊れないが、YJ-WXK-01 はワキンヤン的性質を<strong>人間の身体と感情に実装</strong>されているため壊れる。
         よって必要なのは使命感ではなく<strong>制御（境界・冷却・離脱条件）</strong>である。
       </p>
     </section>
@@ -147,9 +147,9 @@
       <h3>原理A：非侵襲性</h3>
       <p>近づきすぎず、詰めず、奪わず、操作しない。結果として相手の防御が解除される。</p>
       <h3>原理B：判断一貫性</h3>
-      <p>何でも言わないが、言う時は迷いを減らす。相手が“基準点”と誤認しやすい。</p>
+      <p>何でも言わないが、言う時は迷いを減らす。相手が“基準点”と認識しやすい。</p>
       <h3>原理C：イベント駆動</h3>
-      <p>危機・締切・決断点で最大出力。平時に常駐を求められると破綻しやすい。</p>
+      <p>危機・締切・決断点で最大出力。平時にも常に最大出力を求められると破綻しやすい。</p>
     </section>
 
     <div class="hr"></div>
@@ -158,11 +158,11 @@
       <h2>恋愛仕様（実運用ログ反映）</h2>
       <ul>
         <li><strong>数が多い / 愛情表現が熱烈 / 破綻も多い</strong> —— これは異常ではなく仕様。</li>
-        <li>非侵襲×深度×誠実が相手の防御を解除し、相手側が「この安心は続く」と誤認しやすい。</li>
+        <li>非侵襲×深度×誠実が相手の防御を解除し、相手側が「この安心は続く」「何をしても許される」と認識しやすい。</li>
         <li>相手が常駐を期待し、役割を預け、感情処理を委ねると、冷却（距離・離脱）が発動する。</li>
       </ul>
       <p class="small">
-        ※“熱烈さ”は嘘ではなく、その瞬間は100%本気。ただし短期高出力であり、常駐保証ではない。
+        ※“熱烈さ”は嘘ではなく、その瞬間は100%本気である。
       </p>
     </section>
 
@@ -171,7 +171,7 @@
     <section id="animals">
       <h2>動物に好かれる章</h2>
       <p>
-        初見に懐かない犬・猫に好かれやすい理由は、
+        この個体が初見に懐かない犬・猫に好かれやすい理由は、
         <strong>侵入しないのに読める</strong>（圧がない／意図が薄い／期待が少ない／予測可能性が高い）ため。
         動物にとっては<strong>安全圏判定</strong>が起きやすい。
       </p>
@@ -187,7 +187,7 @@
       <ul>
         <li>主張で殴らず、前提を整え、概念を翻訳し、議論を“起きにくくする”</li>
         <li>派手さより耐久性。長期的に参照される文章になりやすい</li>
-        <li>弱点：前提整備に時間を溶かす（完璧配置の罠）</li>
+        <li>弱点：前提整備に時間を溶かす（完璧主義の罠）</li>
       </ul>
     </section>
 
@@ -249,6 +249,149 @@
         <strong>自分を削らせない境界線のための文書</strong>である。
         雷を通すのは必要な瞬間だけでよい。
 　  </p>
+      <!-- =========================================================
+  YJ-WXK-01 エラーコード（完全版）  ※このまま index.html に貼り付けOK
+  - 既存UIが「tab」構成なら、そのまま動きます
+  - 追加CSS/JSはこのブロック内に全部同梱（軽量）
+========================================================= -->
+
+<section id="tab-errorcodes" class="tab">
+  <h2>エラーコード（完全版）</h2>
+
+  <p class="muted">
+    本機（YJ-WXK-01）は「症状＝故障」ではなく「状態＝運用上の警報」としてエラーを出します。
+    まずは <strong>安全確保 → 原因切り分け → 復旧手順</strong> の順で対処してください。
+  </p>
+
+  <div class="cardlike" style="padding:12px;border:1px solid rgba(127,127,127,.25);border-radius:12px;margin:12px 0;">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <input id="errSearch" type="search" placeholder="検索：例）睡眠 / 依存 / 怒り / E120 / 緊急" 
+             style="flex:1;min-width:240px;padding:10px 12px;border-radius:10px;border:1px solid rgba(127,127,127,.35);">
+      <button id="errReset" type="button"
+              style="padding:10px 12px;border-radius:10px;border:1px solid rgba(127,127,127,.35);background:transparent;">
+        リセット
+      </button>
+    </div>
+    <p class="muted" style="margin:10px 0 0;">
+      表内をフィルタします（コード/症状/原因/対処/タグに反応）。
+    </p>
+  </div>
+
+  <div class="err-legend" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px;">
+    <span class="badge sev0">INFO</span>
+    <span class="badge sev1">WARN</span>
+    <span class="badge sev2">ERROR</span>
+    <span class="badge sev3">CRITICAL</span>
+    <span class="muted" style="margin-left:6px;">（重大度：低 → 高）</span>
+  </div>
+
+  <style>
+    /* 既存CSSと喧嘩しにくい範囲で最小限 */
+    #tab-errorcodes .muted { opacity:.72; }
+    #tab-errorcodes .badge{
+      display:inline-flex;align-items:center;justify-content:center;
+      font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(127,127,127,.35);
+      letter-spacing:.04em;
+    }
+    #tab-errorcodes .sev0{ opacity:.85; }
+    #tab-errorcodes .sev1{ }
+    #tab-errorcodes .sev2{ font-weight:600; }
+    #tab-errorcodes .sev3{ font-weight:700; text-transform:uppercase; }
+
+    #tab-errorcodes table{ width:100%; border-collapse:collapse; overflow:hidden; border-radius:12px; }
+    #tab-errorcodes th, #tab-errorcodes td{
+      padding:10px 10px; border-bottom:1px solid rgba(127,127,127,.22); vertical-align:top;
+      text-align:left;
+    }
+    #tab-errorcodes thead th{
+      position:sticky; top:0; background:rgba(127,127,127,.08); backdrop-filter: blur(6px);
+      z-index:1;
+    }
+    #tab-errorcodes tr:hover td{ background:rgba(127,127,127,.06); }
+    #tab-errorcodes code{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12.5px;
+      padding:2px 6px;border-radius:8px;border:1px solid rgba(127,127,127,.25);
+      background:rgba(127,127,127,.08);
+      white-space:nowrap;
+    }
+    #tab-errorcodes details{
+      border:1px solid rgba(127,127,127,.22);
+      border-radius:12px;padding:10px 12px;margin:12px 0;
+      background:rgba(127,127,127,.04);
+    }
+    #tab-errorcodes details > summary{ cursor:pointer; font-weight:600; }
+    #tab-errorcodes .tags{ margin-top:6px; display:flex; gap:6px; flex-wrap:wrap; }
+    #tab-errorcodes .tag{
+      font-size:12px;padding:2px 8px;border-radius:999px;
+      border:1px solid rgba(127,127,127,.25);opacity:.9;
+    }
+    #tab-errorcodes .nowrap{ white-space:nowrap; }
+    #tab-errorcodes .small{ font-size:12px; opacity:.9; }
+  </style>
+
+  <details open>
+    <summary>最優先の安全手順（CRITICAL時）</summary>
+    <ol style="margin:10px 0 0; padding-left:18px;">
+      <li><strong>身体の安全</strong>：睡眠・水分・食事・体温・呼吸を先に整える（議論/分析は後）。</li>
+      <li><strong>環境の安全</strong>：刺激源（人/通知/場所）を一時遮断。必要なら退避・帰宅。</li>
+      <li><strong>連絡線</strong>：信頼できる相手 or 店長/医療/相談先に短文で状況共有。</li>
+      <li><strong>復旧</strong>：この表の「一次対処」だけ実行。原因分析は回復後。</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>重大度の読み方</summary>
+    <ul style="margin:10px 0 0; padding-left:18px;">
+      <li><span class="badge sev0">INFO</span>：状態ログ。放置OKだが、傾向は観測価値あり。</li>
+      <li><span class="badge sev1">WARN</span>：悪化の前兆。軽い介入（休憩/補給/遮断）で戻す。</li>
+      <li><span class="badge sev2">ERROR</span>：運用継続で破綻しやすい。行動を変える必要あり。</li>
+      <li><span class="badge sev3">CRITICAL</span>：安全優先。対人/作業/移動の継続は中止が基本。</li>
+    </ul>
+  </details>
+
+  <h3 style="margin-top:18px;">一覧</h3>
+
+  <div style="overflow:auto;border:1px solid rgba(127,127,127,.22);border-radius:12px;">
+    <table id="errTable" aria-label="YJ-WXK-01 error codes">
+      <thead>
+        <tr>
+          <th class="nowrap">重大度</th>
+          <th class="nowrap">コード</th>
+          <th>症状</th>
+          <th>主原因（よくある順）</th>
+          <th>一次対処（最短で効く）</th>
+          <th class="nowrap">タグ</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <!-- ====== 000 系：情報ログ ====== -->
+        <tr>
+          <td><span class="badge sev0">INFO</span></td>
+          <td><code>E000</code></td>
+          <td>平常運転（異常なし）</td>
+          <td>—</td>
+          <td>継続。ログを残すなら「何が良かったか」を1行。</td>
+          <td><span class="tag">ログ</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev0">INFO</span></td>
+          <td><code>E010</code></td>
+          <td>「雷」出力が安定（集中・快）</td>
+          <td>睡眠/運動/達成感が揃っている</td>
+          <td>過負荷に行く前に休憩を挟む（30–90分ごと）。</td>
+          <td><span class="tag">集中</span> <span class="tag">快</span></td>
+        </tr>
+
+        <tr>
+          <td><span class="badge sev0">INFO</span></td
+
+      <p>
+        エラーコード完全版
+        
+      </p>
       <p class="small">最終改訂：<span class="mono">Rev.FULL</span></p>
     </section>
   </main>
