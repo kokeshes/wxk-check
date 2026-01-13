@@ -1,5 +1,5 @@
 // =====================
-// WXK Check (Supabase sync + Shared read-only history) - SAFE BUILD
+// WXK Check (Supabase sync + Shared read-only history)
 // =====================
 
 // --- PWA register ---
@@ -11,12 +11,13 @@ if ("serviceWorker" in navigator) {
 const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
 const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
 
-// Create client (requires <script src="https://unpkg.com/@supabase/supabase-js@2"></script>)
+// Create client (requires supabase-js script)
 const supabase =
   (window.supabase &&
     typeof window.supabase.createClient === "function" &&
     SUPABASE_URL.includes("supabase.co") &&
-    SUPABASE_ANON_KEY.startsWith("ey"))
+    SUPABASE_ANON_KEY &&
+    SUPABASE_ANON_KEY.length > 20)
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
     : null;
 
@@ -70,33 +71,28 @@ const ERR_CODES = [
   { code: "E710", name: "現実感の低下（ぼんやり／自分が遠い）", sev: "Critical", quick: "五感接地（冷水/香り/足裏）＋誰かの声" },
 ];
 
-const SEVERITY_RANK = { Critical: 3, High: 2, Med: 1, Info: 0 };
+const SEVERITY_RANK = { "Critical": 3, "High": 2, "Med": 1, "Info": 0 };
 
 // =====================
-// DOM helpers (SAFE)
+// DOM helpers（nullでも落ちない）
 // =====================
 const $ = (id) => document.getElementById(id);
 
-function safeBind(id, event, handler) {
-  const el = $(id);
-  if (!el) return null;
-  el.addEventListener(event, handler);
-  return el;
-}
+function on(el, ev, fn) { if (el) el.addEventListener(ev, fn); }
 
 function escapeHtml(s) {
   return String(s || "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
   }[c]));
 }
 
 function fmt(ts) {
   const d = new Date(ts);
-  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`;
 }
 
 // =====================
-// Local storage (offline fallback + personal use)
+// Local storage (offline fallback)
 // =====================
 function loadLogsLocal() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
@@ -109,9 +105,9 @@ function saveLogsLocal(logs) {
 // =====================
 // Supabase state
 // =====================
-let sessionUser = null;         // { id, email }
-let ownerOptions = [];          // [{owner_id, label, isSelf}]
-let activeOwnerId = null;       // currently viewed owner_id (history tab)
+let sessionUser = null;    // { id, email }
+let ownerOptions = [];     // [{owner_id, label, isSelf}]
+let activeOwnerId = null;  // currently viewed owner_id
 
 // =====================
 // Tabs
@@ -121,7 +117,8 @@ document.querySelectorAll("nav button").forEach(btn => {
     document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
     document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
     btn.classList.add("active");
-    document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
+    const tab = document.getElementById(`tab-${btn.dataset.tab}`);
+    if (tab) tab.classList.add("active");
 
     if (btn.dataset.tab === "list") await renderList();
     if (btn.dataset.tab === "diag") renderDiag();
@@ -130,24 +127,20 @@ document.querySelectorAll("nav button").forEach(btn => {
 });
 
 // =====================
-// Slider label (SAFE)
+// Slider label
 // =====================
-safeBind("overload", "input", () => {
-  const overload = $("overload");
-  const overloadVal = $("overloadVal");
-  if (overload && overloadVal) overloadVal.textContent = overload.value;
-});
+const overload = $("overload");
+const overloadVal = $("overloadVal");
+on(overload, "input", () => { if (overloadVal) overloadVal.textContent = overload.value; });
 
 // =====================
 // ERR chips
 // =====================
+const errChips = $("errChips");
 const selectedErr = new Set();
 const chipButtons = new Map();
 
-(function initChips() {
-  const errChips = $("errChips");
-  if (!errChips) return; // ページ差分でも落ちない
-
+if (errChips) {
   ERR_CODES.forEach(e => {
     const b = document.createElement("button");
     b.type = "button";
@@ -158,7 +151,7 @@ const chipButtons = new Map();
     errChips.appendChild(b);
     chipButtons.set(e.code, b);
   });
-})();
+}
 
 function toggleChip(code, forceState = null) {
   const btn = chipButtons.get(code);
@@ -178,7 +171,7 @@ function setChipsFromCodes(codes) {
 }
 
 // =====================
-// Auth UI (SAFE even if elements missing)
+// Auth UI
 // =====================
 function setAuthMsg(msg) {
   const el = $("authMsg");
@@ -190,21 +183,21 @@ function updateAuthUI() {
   if (emailEl && sessionUser?.email) emailEl.value = sessionUser.email;
 
   if (!supabase) {
-    setAuthMsg("Supabase未設定（SUPABASE_URL / KEY / supabase-js 読み込みを確認）");
+    setAuthMsg("Supabase未設定：SUPABASE_URL / SUPABASE_ANON_KEY を設定してね。");
     return;
   }
   if (!sessionUser) {
-    setAuthMsg("未ログイン：クラウド共有は無効（ローカルのみ使用中）");
+    setAuthMsg("未ログイン：共有（クラウド閲覧）は使えません。診断/入力はローカルで使えます。");
   } else {
     setAuthMsg(`ログイン中：${sessionUser.email}`);
   }
 }
 
 async function initAuth() {
-  // UIが無いページでも落ちない
-  updateAuthUI();
-
-  if (!supabase) return;
+  if (!supabase) {
+    updateAuthUI();
+    return;
+  }
 
   const { data: { session } } = await supabase.auth.getSession();
   sessionUser = session?.user ? { id: session.user.id, email: session.user.email } : null;
@@ -216,8 +209,7 @@ async function initAuth() {
     refreshOwnerOptions().catch(() => {});
   });
 
-  // login button
-  safeBind("loginBtn", "click", async () => {
+  on($("loginBtn"), "click", async () => {
     const email = ($("authEmail")?.value || "").trim();
     if (!email) return setAuthMsg("メールを入れてください。");
 
@@ -229,19 +221,18 @@ async function initAuth() {
     setAuthMsg("ログインリンクを送信しました。メールを開いてリンクを押してね。");
   });
 
-  // logout
-  safeBind("logoutBtn", "click", async () => {
+  on($("logoutBtn"), "click", async () => {
     await supabase.auth.signOut();
     setAuthMsg("ログアウトしました。");
   });
 }
 
 // =====================
-// Shared history: owner select (SAFE)
+// Shared history: owner select
 // =====================
 async function refreshOwnerOptions() {
   const sel = $("ownerSelect");
-  if (!sel) return; // HTMLに無いなら何もしない
+  if (!sel) return;
 
   ownerOptions = [];
   sel.innerHTML = "";
@@ -256,15 +247,15 @@ async function refreshOwnerOptions() {
 
   ownerOptions.push({ owner_id: sessionUser.id, label: "自分（クラウド）", isSelf: true });
 
-  const { data: shares, error } = await supabase
+  const { data: shares } = await supabase
     .from("log_viewers")
     .select("owner_id")
     .eq("viewer_email", sessionUser.email);
 
-  if (!error && Array.isArray(shares)) {
+  if (Array.isArray(shares)) {
     const uniq = Array.from(new Set(shares.map(x => x.owner_id).filter(Boolean)));
     uniq.forEach((oid, i) => {
-      if (oid !== sessionUser.id) ownerOptions.push({ owner_id: oid, label: `共有：オーナー#${i + 1}`, isSelf: false });
+      if (oid !== sessionUser.id) ownerOptions.push({ owner_id: oid, label: `共有：オーナー#${i+1}`, isSelf: false });
     });
   }
 
@@ -283,9 +274,9 @@ async function refreshOwnerOptions() {
 }
 
 // =====================
-// Save entry (SAFE)
+// Save entry
 // =====================
-safeBind("saveBtn", "click", async () => {
+on($("saveBtn"), "click", async () => {
   const entry = {
     id: crypto.randomUUID(),
     ts: new Date().toISOString(),
@@ -303,12 +294,12 @@ safeBind("saveBtn", "click", async () => {
     boundaryNote: ($("boundaryNote")?.value || "").trim()
   };
 
-  // Always keep local
+  // Always keep local (offline safety)
   const logsLocal = loadLogsLocal();
   logsLocal.unshift(entry);
   saveLogsLocal(logsLocal);
 
-  // Cloud sync (optional)
+  // If logged in, also sync to Supabase
   if (supabase && sessionUser) {
     const payload = {
       owner_id: sessionUser.id,
@@ -323,34 +314,30 @@ safeBind("saveBtn", "click", async () => {
     };
     const { error } = await supabase.from("logs").insert(payload);
     if (error) {
-      const saveMsg = $("saveMsg");
-      if (saveMsg) {
-        saveMsg.textContent = `ローカル保存OK / クラウド同期失敗：${error.message}`;
-        setTimeout(() => (saveMsg.textContent = ""), 2200);
-      }
+      const m = $("saveMsg");
+      if (m) m.textContent = `ローカル保存OK / クラウド同期失敗：${error.message}`;
+      setTimeout(() => { if ($("saveMsg")) $("saveMsg").textContent = ""; }, 2200);
       return;
     }
   }
 
-  const saveMsg = $("saveMsg");
-  if (saveMsg) {
-    saveMsg.textContent = "保存しました。";
-    setTimeout(() => (saveMsg.textContent = ""), 1200);
-  }
+  const msg = $("saveMsg");
+  if (msg) msg.textContent = "保存しました。";
+  setTimeout(() => { if ($("saveMsg")) $("saveMsg").textContent = ""; }, 1200);
 });
 
 // =====================
-// List render (SAFE)
+// List render (history)
 // =====================
 async function renderList() {
   const ul = $("logList");
   if (!ul) return;
   ul.innerHTML = "";
 
-  await refreshOwnerOptions().catch(() => {});
+  await refreshOwnerOptions();
 
   // LOCAL MODE
-  if (!sessionUser || !supabase || activeOwnerId === "local" || !activeOwnerId) {
+  if (!sessionUser || !supabase || activeOwnerId === "local") {
     const logs = loadLogsLocal();
     logs.forEach(ent => {
       const li = document.createElement("li");
@@ -410,19 +397,19 @@ async function renderList() {
 }
 
 // =====================
-// Export / Import (LOCAL ONLY) - SAFE
+// Export / Import (LOCAL ONLY)
 // =====================
-safeBind("exportBtn", "click", () => {
+on($("exportBtn"), "click", () => {
   const blob = new Blob([JSON.stringify(loadLogsLocal(), null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `wxk_logs_local_${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `wxk_logs_local_${new Date().toISOString().slice(0,10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
 });
 
-safeBind("importFile", "change", async (e) => {
+on($("importFile"), "change", async (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
   const text = await f.text();
@@ -439,8 +426,7 @@ safeBind("importFile", "change", async (e) => {
   }
 });
 
-// --- Wipe (LOCAL ONLY) ---
-safeBind("wipeBtn", "click", () => {
+on($("wipeBtn"), "click", () => {
   if (confirm("ローカルデータを削除します。よろしいですか？（クラウドは消えません）")) {
     localStorage.removeItem(STORAGE_KEY);
     alert("削除しました。");
@@ -448,32 +434,35 @@ safeBind("wipeBtn", "click", () => {
 });
 
 // =====================
-// Owner-only: manage viewers (share history) - SAFE
+// Owner-only: manage viewers (share history)
 // =====================
 async function renderSettings() {
-  // HTMLにUIが無ければ何もしない
-  if (!$("viewerList") && !$("viewerEmail") && !$("addViewerBtn") && !$("ownerSelect") && !$("authEmail")) {
+  // viewerListが無い環境でも落ちない
+  const vList = $("viewerList");
+  if (vList) vList.innerHTML = "";
+
+  if (!supabase) {
+    setAuthMsg("Supabase未設定：SUPABASE_URL / SUPABASE_ANON_KEY を設定してね。");
+    return;
+  }
+  if (!sessionUser) {
+    // 未ログインならここで止める（UIはあるが操作できない）
     return;
   }
 
-  if (!supabase || !sessionUser) {
-    const ul = $("viewerList");
-    if (ul) ul.innerHTML = "";
-    return;
-  }
+  on($("addViewerBtn"), "click", async () => {
+    const vEmail = ($("viewerEmail")?.value || "").trim().toLowerCase();
+    if (!vEmail) return alert("閲覧者メールを入れてください。");
 
-  // 二重バインド防止：毎回onclickで上書き
-  const addBtn = $("addViewerBtn");
-  if (addBtn) {
-    addBtn.onclick = async () => {
-      const vEmail = ($("viewerEmail")?.value || "").trim().toLowerCase();
-      if (!vEmail) return alert("閲覧者メールを入れてください。");
-      const { error } = await supabase.from("log_viewers").insert({ owner_id: sessionUser.id, viewer_email: vEmail });
-      if (error) return alert(`追加失敗：${error.message}`);
-      if ($("viewerEmail")) $("viewerEmail").value = "";
-      await renderViewerList();
-    };
-  }
+    const { error } = await supabase
+      .from("log_viewers")
+      .insert({ owner_id: sessionUser.id, viewer_email: vEmail });
+
+    if (error) return alert(`追加失敗：${error.message}`);
+    if ($("viewerEmail")) $("viewerEmail").value = "";
+    await renderViewerList();
+    await refreshOwnerOptions();
+  });
 
   await renderViewerList();
 }
@@ -482,6 +471,8 @@ async function renderViewerList() {
   const ul = $("viewerList");
   if (!ul) return;
   ul.innerHTML = "";
+
+  if (!supabase || !sessionUser) return;
 
   const { data, error } = await supabase
     .from("log_viewers")
@@ -505,11 +496,13 @@ async function renderViewerList() {
       </div>
     `;
     li.querySelector("[data-rm]")?.addEventListener("click", async () => {
+      const email = v.viewer_email;
       const { error: delErr } = await supabase
         .from("log_viewers")
         .delete()
         .eq("owner_id", sessionUser.id)
-        .eq("viewer_email", v.viewer_email);
+        .eq("viewer_email", email);
+
       if (delErr) alert(`削除失敗：${delErr.message}`);
       await renderViewerList();
       await refreshOwnerOptions();
@@ -572,6 +565,7 @@ function profileBoost(profile, scores) {
       scores["E200"] = (scores["E200"] || 0) + 1;
       scores["E220"] = (scores["E220"] || 0) + 1;
       break;
+
     case "仕事/研究":
       scores["003"] = (scores["003"] || 0) + 1;
       scores["301"] = (scores["301"] || 0) + 1;
@@ -580,6 +574,7 @@ function profileBoost(profile, scores) {
       scores["E510"] = (scores["E510"] || 0) + 1;
       scores["E500"] = (scores["E500"] || 0) + 1;
       break;
+
     case "相談/友人":
       scores["004"] = (scores["004"] || 0) + 1;
       scores["104"] = (scores["104"] || 0) + 1;
@@ -588,12 +583,14 @@ function profileBoost(profile, scores) {
       scores["E210"] = (scores["E210"] || 0) + 1;
       scores["E330"] = (scores["E330"] || 0) + 1;
       break;
+
     case "単独":
       scores["005"] = (scores["005"] || 0) + 1;
       scores["E320"] = (scores["E320"] || 0) + 1;
       scores["E330"] = (scores["E330"] || 0) + 1;
       scores["E011"] = (scores["E011"] || 0) + 1;
       break;
+
     default:
       scores["E300"] = (scores["E300"] || 0) + 1;
       scores["004"]  = (scores["004"]  || 0) + 1;
@@ -604,7 +601,7 @@ function profileBoost(profile, scores) {
 
 function sortTop(scores) {
   const arr = Object.entries(scores)
-    .filter(([, v]) => v > 0)
+    .filter(([,v]) => v > 0)
     .map(([code, score]) => {
       const meta = getErrMeta(code);
       return {
@@ -661,12 +658,12 @@ function renderDiag() {
           <button id="yesBtn" class="primary">YES</button>
           <button id="noBtn">NO</button>
         </div>
-        <div class="muted" style="margin-top:8px;">${idx + 1} / ${DIAG_Q.length}</div>
+        <div class="muted" style="margin-top:8px;">${idx+1} / ${DIAG_Q.length}</div>
       </div>
     `;
 
-    safeBind("yesBtn", "click", () => apply(node.yes));
-    safeBind("noBtn", "click", () => apply(node.no));
+    on($("yesBtn"), "click", () => apply(node.yes));
+    on($("noBtn"), "click", () => apply(node.no));
   }
 
   function apply(addMap) {
@@ -691,14 +688,24 @@ function renderDiag() {
          </div>`
       : `<div class="card"><div class="muted">Criticalなし。#1から順に軽く当てていく。</div></div>`;
 
-    const rows = top.map((t, i) => `
-      <div class="card">
-        <div><strong>#${i + 1} ${escapeHtml(t.code)} ${escapeHtml(t.name)}</strong>
-          <span class="muted">（${escapeHtml(t.sev)} / score ${t.score}）</span>
+    const rows = top.map((t, i) => {
+      if (t.code === "OK") {
+        return `
+          <div class="card">
+            <div><strong>#${i+1} OK（Monitor）</strong></div>
+            <div class="muted" style="margin-top:6px;"><strong>即応：</strong> ${escapeHtml(t.quick)}</div>
+          </div>
+        `;
+      }
+      return `
+        <div class="card">
+          <div><strong>#${i+1} ${t.code} ${escapeHtml(t.name)}</strong>
+            <span class="muted">（${escapeHtml(t.sev)} / score ${t.score}）</span>
+          </div>
+          <div class="muted" style="margin-top:6px;"><strong>即応：</strong> ${escapeHtml(t.quick)}</div>
         </div>
-        <div class="muted" style="margin-top:6px;"><strong>即応：</strong> ${escapeHtml(t.quick)}</div>
-      </div>
-    `).join("");
+      `;
+    }).join("");
 
     const codesToApply = top.filter(t => t.code !== "OK").map(t => t.code);
 
@@ -713,13 +720,13 @@ function renderDiag() {
           <button id="applyBtn" class="primary" ${codesToApply.length ? "" : "disabled"}>この結果をERR候補に反映</button>
           <button id="restartBtn">もう一回</button>
         </div>
+        <div class="muted" style="margin-top:8px;">反映すると「入力」タブのERR候補がこの3つに切り替わる。</div>
       </div>
       ${rows}
     `;
 
-    safeBind("restartBtn", "click", renderDiag);
-
-    safeBind("applyBtn", "click", () => {
+    on($("restartBtn"), "click", renderDiag);
+    on($("applyBtn"), "click", () => {
       document.querySelector('nav button[data-tab="log"]')?.click();
       setChipsFromCodes(codesToApply);
     });
@@ -732,6 +739,6 @@ function renderDiag() {
 // Boot
 // =====================
 (async function boot() {
-  await initAuth().catch(() => {});
-  await refreshOwnerOptions().catch(() => {});
+  await initAuth();
+  await refreshOwnerOptions();
 })();
