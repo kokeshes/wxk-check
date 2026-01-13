@@ -53,8 +53,8 @@
   // Supabase config (SET YOUR VALUES)
   // ---------------------
   // If you don't want cloud sync, leave as-is. App will run local-only.
-  const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
-  const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+  const SUPABASE_URL = "https://nghnvqolxlzblwncpfgw.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_eMbDDZzJfNIheEzK04rsRw_oXMoc7fh";
 
   // createClient requires supabase-js loaded on window (from CDN)
   const supabase = safe(() => {
