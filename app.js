@@ -1,8 +1,7 @@
 // =====================
-// WXK Check (Unified / Robust)
-// - Local logs + Supabase cloud sync (Magic Link) + shared read-only viewing
-// - Works with your HTML: #tab-log/#tab-list/#tab-diag/#tab-settings
-// - IMPORTANT: No duplicated const declarations (fixes "app.js dead" after login)
+// WXK Check (Stable / Single IIFE)
+// - Local logs + optional Supabase (Magic Link) + viewer (read-only)
+// - Matches your HTML ids (#tab-log/#tab-list/#tab-diag/#tab-settings)
 // =====================
 
 (() => {
@@ -36,33 +35,50 @@
     if (el) el.textContent = text;
   }
 
-  // ---------------------
-  // PWA register (optional)
-  // ---------------------
-  safe(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./sw.js").catch(() => {});
+  function toast(msg) {
+    let el = byId("wxk-toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "wxk-toast";
+      el.style.position = "fixed";
+      el.style.left = "50%";
+      el.style.bottom = "18px";
+      el.style.transform = "translateX(-50%)";
+      el.style.padding = "10px 12px";
+      el.style.border = "1px solid rgba(255,255,255,.18)";
+      el.style.background = "rgba(20,20,22,.92)";
+      el.style.backdropFilter = "blur(8px)";
+      el.style.borderRadius = "12px";
+      el.style.fontSize = "14px";
+      el.style.zIndex = "9999";
+      el.style.maxWidth = "92vw";
+      el.style.color = "inherit";
+      el.style.boxShadow = "0 10px 30px rgba(0,0,0,.35)";
+      el.style.display = "none";
+      document.body.appendChild(el);
     }
-  });
+    el.textContent = msg;
+    el.style.display = "block";
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => (el.style.display = "none"), 2200);
+  }
 
   // ---------------------
-  // Supabase config
+  // Supabase config (SET YOUR VALUES)
   // ---------------------
+  // If you don't want cloud sync, keep empty strings and app will run local-only.
   const SUPABASE_URL = "https://nghnvqolxlzblwncpfgw.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_eMbDDZzJfNIheEzK04rsRw_oXMoc7fh";
 
-  // Supabase client (optional)
-  const supabase = window.supabase?.createClient?.(SUPABASE_URL, SUPABASE_ANON_KEY) || null;
+  const supabase = safe(() => window.supabase?.createClient?.(SUPABASE_URL, SUPABASE_ANON_KEY)) || null;
 
   // ---------------------
-  // Constants / Storage
+  // Constants
   // ---------------------
   const STORAGE_KEY = "wxk_logs_v2";
   const SEVERITY_RANK = { "Critical": 3, "High": 2, "Med": 1, "Info": 0 };
 
-  // Unified ERR codes
   const ERR_CODES = [
-    // --- 3-digit legacy ---
     { code: "001", name: "常駐要求過負荷", sev: "Critical", quick: "範囲・期限を宣言／距離復帰" },
     { code: "002", name: "境界侵害", sev: "Critical", quick: "中断／距離復帰" },
     { code: "003", name: "責任未定義ループ", sev: "High", quick: "『誰が決める？』を確定" },
@@ -78,7 +94,6 @@
     { code: "301", name: "学際翻訳過多", sev: "Med", quick: "仮結論を先に置く" },
     { code: "303", name: "締切未設定", sev: "High", quick: "擬似締切を作る（外部提出）" },
 
-    // --- E-codes (from manual) ---
     { code: "E000", name: "平常運転（異常なし）", sev: "Info", quick: "維持。良かった要因を1行ログ" },
     { code: "E010", name: "雷出力：安定（集中・快）", sev: "Info", quick: "45–90分ごとに小休止＋水分固定" },
     { code: "E011", name: "思考が“外部モード”へ（距離が取れる）", sev: "Info", quick: "分析OK。感情は日本語で1回着地" },
@@ -125,7 +140,7 @@
   }
 
   // ---------------------
-  // State (auth + sharing)
+  // State
   // ---------------------
   let sessionUser = null;   // { id, email }
   let ownerOptions = [];    // [{owner_id,label,isSelf}]
@@ -157,7 +172,6 @@
   function renderErrChips() {
     const wrap = byId("errChips");
     if (!wrap) return;
-
     wrap.innerHTML = "";
     chipButtons.clear();
 
@@ -174,18 +188,12 @@
   }
 
   // ---------------------
-  // Tabs (your HTML)
+  // Tabs
   // ---------------------
   function bindTabs() {
     const navBtns = qsa("header nav button[data-tab]");
-    const tabs = qsa("main .tab");
-    if (navBtns.length === 0 || tabs.length === 0) return;
-
-    async function onActivate(tab) {
-      if (tab === "list") await safe(async () => await renderList());
-      if (tab === "diag") safe(renderDiag);
-      if (tab === "settings") await safe(async () => await renderSettings());
-    }
+    const tabs = qsa("main section.tab");
+    if (!navBtns.length || !tabs.length) return;
 
     navBtns.forEach(btn => {
       btn.addEventListener("click", async () => {
@@ -193,10 +201,15 @@
           navBtns.forEach(b => b.classList.remove("active"));
           tabs.forEach(t => t.classList.remove("active"));
           btn.classList.add("active");
-          const sec = byId(`tab-${btn.dataset.tab}`);
+          const id = `tab-${btn.dataset.tab}`;
+          const sec = byId(id);
           if (sec) sec.classList.add("active");
         });
-        await onActivate(btn.dataset.tab);
+
+        const tab = btn.dataset.tab;
+        if (tab === "list") await renderList();
+        if (tab === "diag") renderDiag();
+        if (tab === "settings") await renderSettings();
       });
     });
   }
@@ -236,13 +249,16 @@
   }
 
   async function initAuth() {
-    updateAuthUI();
-    if (!supabase) return;
+    if (!supabase) {
+      updateAuthUI();
+      return;
+    }
 
     const sess = await safe(async () => {
       const { data } = await supabase.auth.getSession();
       return data?.session || null;
     });
+
     sessionUser = sess?.user ? { id: sess.user.id, email: sess.user.email } : null;
     updateAuthUI();
 
@@ -275,8 +291,6 @@
       logoutBtn.addEventListener("click", async () => {
         await safe(() => supabase.auth.signOut());
         setAuthMsg("ログアウトしました。");
-        // UI refresh
-        await safe(async () => await refreshOwnerOptions());
       });
     }
   }
@@ -291,7 +305,6 @@
     ownerOptions = [];
     sel.innerHTML = "";
 
-    // local-only fallback
     if (!supabase || !sessionUser) {
       ownerOptions = [{ owner_id: "local", label: "この端末（ローカル）", isSelf: true }];
       activeOwnerId = "local";
@@ -300,19 +313,11 @@
       return;
     }
 
-    // self
     ownerOptions.push({ owner_id: sessionUser.id, label: "自分（クラウド）", isSelf: true });
 
-    // shares where my email is viewer
-    const resp = await safe(async () => {
-      return await supabase
-        .from("log_viewers")
-        .select("owner_id")
-        .eq("viewer_email", sessionUser.email);
-    });
-
-    const shares = resp?.data || [];
-    const error = resp?.error || null;
+    const { data: shares, error } = await safe(async () => {
+      return await supabase.from("log_viewers").select("owner_id").eq("viewer_email", sessionUser.email);
+    }) || { data: null, error: null };
 
     if (!error && Array.isArray(shares)) {
       const uniq = Array.from(new Set(shares.map(x => x.owner_id).filter(Boolean)));
@@ -362,12 +367,10 @@
       boundaryNote: (byId("boundaryNote")?.value || "").trim()
     };
 
-    // local always
     const logs = loadLogsLocal();
     logs.unshift(entry);
     saveLogsLocal(logs);
 
-    // cloud optional
     if (supabase && sessionUser) {
       const payload = {
         owner_id: sessionUser.id,
@@ -381,9 +384,9 @@
         boundary_note: entry.boundaryNote
       };
 
-      const resp = await safe(async () => await supabase.from("logs").insert(payload));
-      if (resp?.error) {
-        setText("saveMsg", `ローカル保存OK / クラウド同期失敗：${resp.error.message}`);
+      const { error } = await safe(async () => await supabase.from("logs").insert(payload)) || { error: null };
+      if (error) {
+        setText("saveMsg", `ローカル保存OK / クラウド同期失敗：${error.message}`);
         setTimeout(() => setText("saveMsg", ""), 2400);
         return;
       }
@@ -407,9 +410,9 @@
     if (!ul) return;
 
     ul.innerHTML = "";
+
     await refreshOwnerOptions();
 
-    // Local mode
     if (!supabase || !sessionUser || activeOwnerId === "local") {
       const logs = loadLogsLocal();
       logs.forEach(ent => {
@@ -547,13 +550,8 @@
       addBtn.addEventListener("click", async () => {
         const vEmail = (byId("viewerEmail")?.value || "").trim().toLowerCase();
         if (!vEmail) return alert("閲覧者メールを入れてください。");
-
-        const resp = await safe(async () => await supabase
-          .from("log_viewers")
-          .insert({ owner_id: sessionUser.id, viewer_email: vEmail })
-        );
+        const resp = await safe(async () => await supabase.from("log_viewers").insert({ owner_id: sessionUser.id, viewer_email: vEmail }));
         if (resp?.error) return alert(`追加失敗：${resp.error.message}`);
-
         if (byId("viewerEmail")) byId("viewerEmail").value = "";
         await renderViewerList();
       });
@@ -599,8 +597,7 @@
           .from("log_viewers")
           .delete()
           .eq("owner_id", sessionUser.id)
-          .eq("viewer_email", email)
-        );
+          .eq("viewer_email", email));
         if (delResp?.error) alert(`削除失敗：${delResp.error.message}`);
         await renderViewerList();
         await refreshOwnerOptions();
@@ -614,13 +611,11 @@
   // Diagnosis (DIAG_Q: NO OMISSION)
   // ---------------------
   const DIAG_Q = [
-    // --- Safety first / crisis ---
     { id:"crisis1", q:"今、危険（自己破壊衝動/安全が揺らぐ/一人がまずい）？", yes:{ "E700": 10, "E710": 4 }, no:{} },
     { id:"dereal", q:"現実感が薄い／自分が遠い感じがある？", yes:{ "E710": 9, "E700": 3 }, no:{} },
     { id:"panic", q:"胸が詰まる・過呼吸っぽい・動悸が強い？", yes:{ "E710": 5, "E320": 3 }, no:{} },
     { id:"unsafeEnv", q:"いま居る場所/相手が安全じゃない（離れるべき）？", yes:{ "E700": 6, "E220": 4, "002": 3 }, no:{} },
 
-    // --- Body / life base ---
     { id:"sleep", q:"睡眠が足りない（6h未満/質が悪い）？", yes:{ "E100": 5, "E320": 2, "E330": 2, "005": 1 }, no:{} },
     { id:"sleep2", q:"寝不足が2日以上続いている？", yes:{ "E100": 3, "E130": 2, "E320": 2 }, no:{} },
     { id:"food", q:"空腹・食事抜き・糖が足りない感じ？", yes:{ "E110": 5, "E310": 2, "E300": 2 }, no:{} },
@@ -629,7 +624,6 @@
     { id:"overloadBody", q:"疲労が溜まり、体力と情緒が同時に落ちてる？", yes:{ "E130": 6, "001": 2, "004": 2 }, no:{} },
     { id:"overtrain", q:"運動/仕事/対人の負荷を積みすぎて回復を軽視してる？", yes:{ "E130": 4, "E500": 1, "E330": 1 }, no:{} },
 
-    // --- People / boundary ---
     { id:"boundaryThin", q:"優しくしすぎて抱え込みモードになってる？", yes:{ "E200": 5, "104": 3, "004": 2 }, no:{} },
     { id:"invasion", q:"相手が踏み込みすぎ（時間/身体/私生活/尊厳）？", yes:{ "002": 5, "E210": 3, "E220": 2 }, no:{} },
     { id:"freeze", q:"侵害刺激（嫌な言葉/圧/ハラスメント）で固まる・反芻が出てる？", yes:{ "E210": 7, "002": 3, "203": 2 }, no:{} },
@@ -641,7 +635,6 @@
     { id:"responsibility", q:"責任の所在は明確？（誰が決める？）", yes:{}, no:{ "003": 5, "001": 2 } },
     { id:"decisionOwner", q:"『誰が決める？』が曖昧なまま、こちらが埋め合わせて決めてない？", yes:{ "003": 5, "104": 2 }, no:{} },
 
-    // --- Cognition / mood ---
     { id:"anx", q:"最悪想定が止まらない？", yes:{ "E320": 6, "005": 1, "003": 1 }, no:{} },
     { id:"scan", q:"通知/相手の反応を何度も確認してしまう？", yes:{ "E320": 3, "203": 1, "201": 1 }, no:{} },
     { id:"selfhate", q:"自己否定（恥/罪悪感/罵倒）ループに入ってる？", yes:{ "E330": 6, "004": 2 }, no:{} },
@@ -650,7 +643,6 @@
     { id:"meaning", q:"意味を生成しすぎて疲れてる？（解釈が止まらない）", yes:{ "005": 5, "E320": 1, "003": 1 }, no:{} },
     { id:"overshare", q:"初動で開示しすぎて後から重くなりそう？", yes:{ "101": 4, "E200": 1 }, no:{} },
 
-    // --- Work / research ---
     { id:"hyperfocus", q:"時間感覚が飛ぶ没入が出てる？（補給忘れ）", yes:{ "E500": 5, "E010": 2 }, no:{} },
     { id:"ruminateWork", q:"同じ文/同じ考えを焼き続けて進まない？", yes:{ "E510": 6, "003": 1, "005": 1 }, no:{} },
     { id:"interdiscipline", q:"論点が多領域にまたがり『翻訳』だけで時間が溶けてる？", yes:{ "301": 6, "E510": 2, "E300": 1 }, no:{} },
@@ -658,12 +650,10 @@
     { id:"deadline", q:"締切/提出が曖昧で先延ばしが起きてる？", yes:{ "303": 6, "E300": 1 }, no:{} },
     { id:"responsibilityWork", q:"『誰が決める？』が曖昧で作業が止まってる？", yes:{ "003": 4, "E510": 1 }, no:{} },
 
-    // --- Urge / craving ---
     { id:"urgeLight", q:"口寂しさ/儀式が欲しい程度の渇望がある？", yes:{ "E400": 4 }, no:{} },
     { id:"urgeStrong", q:"渇望が強く、思考が奪われてる？", yes:{ "E410": 6, "E130": 2 }, no:{} },
     { id:"impulse", q:"衝動で何か（連絡/購入/自己処理）をしそう？", yes:{ "E700": 2, "E320": 2, "E310": 2 }, no:{} },
 
-    // --- Night rule ---
     { id:"night", q:"夜に結論を出したくなってる？", yes:{ "005": 5, "003": 2, "E320": 2 }, no:{} },
     { id:"lateMsg", q:"夜に長文を送りたくなってる？", yes:{ "005": 3, "101": 2, "E310": 1 }, no:{} },
   ];
@@ -677,7 +667,6 @@
         scores["E200"] = (scores["E200"] || 0) + 1;
         scores["E220"] = (scores["E220"] || 0) + 1;
         break;
-
       case "仕事/研究":
         scores["003"] = (scores["003"] || 0) + 1;
         scores["301"] = (scores["301"] || 0) + 1;
@@ -686,7 +675,6 @@
         scores["E510"] = (scores["E510"] || 0) + 1;
         scores["E500"] = (scores["E500"] || 0) + 1;
         break;
-
       case "相談/友人":
         scores["004"] = (scores["004"] || 0) + 1;
         scores["104"] = (scores["104"] || 0) + 1;
@@ -695,14 +683,12 @@
         scores["E210"] = (scores["E210"] || 0) + 1;
         scores["E330"] = (scores["E330"] || 0) + 1;
         break;
-
       case "単独":
         scores["005"] = (scores["005"] || 0) + 1;
         scores["E320"] = (scores["E320"] || 0) + 1;
         scores["E330"] = (scores["E330"] || 0) + 1;
         scores["E011"] = (scores["E011"] || 0) + 1;
         break;
-
       default:
         scores["E300"] = (scores["E300"] || 0) + 1;
         scores["004"]  = (scores["004"]  || 0) + 1;
@@ -775,10 +761,8 @@
         </div>
       `;
 
-      const yesBtn = byId("yesBtn");
-      const noBtn = byId("noBtn");
-      if (yesBtn) yesBtn.addEventListener("click", () => apply(node.yes));
-      if (noBtn) noBtn.addEventListener("click", () => apply(node.no));
+      byId("yesBtn")?.addEventListener("click", () => apply(node.yes));
+      byId("noBtn")?.addEventListener("click", () => apply(node.no));
     }
 
     function apply(addMap) {
@@ -864,12 +848,10 @@
     await safe(async () => { await initAuth(); });
     await safe(async () => { await refreshOwnerOptions(); });
 
-    // If currently active tab is list/diag/settings, render it once
     const activeTabBtn = qs("header nav button.active[data-tab]");
     const activeTab = activeTabBtn?.dataset?.tab;
     if (activeTab === "list") await safe(async () => await renderList());
     if (activeTab === "diag") safe(renderDiag);
-    if (activeTab === "settings") await safe(async () => await renderSettings());
 
     console.log("[WXK] boot ok", {
       supabaseEnabled: !!supabase,
