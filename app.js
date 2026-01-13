@@ -1,16 +1,17 @@
 // =====================
-// WXK Check (Robust / Guarded)
-// - Offline local logs + optional Supabase cloud sync + shared read-only viewing
-// - Designed to NEVER break the whole UI even if some DOM nodes are missing
+// WXK Check (Unified / Robust)
+// - Local logs + Supabase cloud sync (Magic Link) + shared read-only viewing
+// - Works with your HTML: #tab-log/#tab-list/#tab-diag/#tab-settings
+// - IMPORTANT: No duplicated const declarations (fixes "app.js dead" after login)
 // =====================
 
 (() => {
   "use strict";
 
   // ---------------------
-  // Basic helpers
+  // Helpers
   // ---------------------
-  const $id = (id) => document.getElementById(id);
+  const byId = (id) => document.getElementById(id);
   const qs = (sel, root = document) => root.querySelector(sel);
   const qsa = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
@@ -27,50 +28,16 @@
   function fmt(ts) {
     const d = new Date(ts);
     if (Number.isNaN(d.getTime())) return String(ts);
-    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
   }
 
   function setText(id, text) {
-    const el = $id(id);
+    const el = byId(id);
     if (el) el.textContent = text;
   }
 
-  function setHtml(id, html) {
-    const el = $id(id);
-    if (el) el.innerHTML = html;
-  }
-
-  function toast(msg) {
-    // UIが無くても出せる簡易トースト
-    let el = $id("wxk-toast");
-    if (!el) {
-      el = document.createElement("div");
-      el.id = "wxk-toast";
-      el.style.position = "fixed";
-      el.style.left = "50%";
-      el.style.bottom = "18px";
-      el.style.transform = "translateX(-50%)";
-      el.style.padding = "10px 12px";
-      el.style.border = "1px solid rgba(255,255,255,.18)";
-      el.style.background = "rgba(20,20,22,.92)";
-      el.style.backdropFilter = "blur(8px)";
-      el.style.borderRadius = "12px";
-      el.style.fontSize = "14px";
-      el.style.zIndex = "9999";
-      el.style.maxWidth = "92vw";
-      el.style.color = "inherit";
-      el.style.boxShadow = "0 10px 30px rgba(0,0,0,.35)";
-      el.style.display = "none";
-      document.body.appendChild(el);
-    }
-    el.textContent = msg;
-    el.style.display = "block";
-    clearTimeout(toast._t);
-    toast._t = setTimeout(() => (el.style.display = "none"), 2400);
-  }
-
   // ---------------------
-  // PWA register
+  // PWA register (optional)
   // ---------------------
   safe(() => {
     if ("serviceWorker" in navigator) {
@@ -81,23 +48,19 @@
   // ---------------------
   // Supabase config
   // ---------------------
-  // If you don't want cloud sync, set URL/KEY = "" and the app will run local-only.
   const SUPABASE_URL = "https://nghnvqolxlzblwncpfgw.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_eMbDDZzJfNIheEzK04rsRw_oXMoc7fh";
 
-  const supabase =
-    (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase?.createClient)
-      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-      : null;
+  // Supabase client (optional)
+  const supabase = window.supabase?.createClient?.(SUPABASE_URL, SUPABASE_ANON_KEY) || null;
 
   // ---------------------
-  // Constants
+  // Constants / Storage
   // ---------------------
-  const STORAGE_KEY = "wxk_logs_v2"; // bump version to reduce "old broken data" issues
+  const STORAGE_KEY = "wxk_logs_v2";
   const SEVERITY_RANK = { "Critical": 3, "High": 2, "Med": 1, "Info": 0 };
 
-  // Unified ERR codes (3-digit + E-codes)
-  // NOTE: You can add more codes here safely.
+  // Unified ERR codes
   const ERR_CODES = [
     // --- 3-digit legacy ---
     { code: "001", name: "常駐要求過負荷", sev: "Critical", quick: "範囲・期限を宣言／距離復帰" },
@@ -157,13 +120,12 @@
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
     catch { return []; }
   }
-
   function saveLogsLocal(logs) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(logs)); } catch {}
   }
 
   // ---------------------
-  // State
+  // State (auth + sharing)
   // ---------------------
   let sessionUser = null;   // { id, email }
   let ownerOptions = [];    // [{owner_id,label,isSelf}]
@@ -178,7 +140,6 @@
   function toggleChip(code, forceState = null) {
     const btn = chipButtons.get(code);
     if (!btn) return;
-
     const isActive = selectedErr.has(code);
     const next = (forceState === null) ? !isActive : forceState;
 
@@ -189,13 +150,12 @@
   }
 
   function setChipsFromCodes(codes) {
-    // Clear
     Array.from(selectedErr).forEach(c => toggleChip(c, false));
     (codes || []).forEach(c => toggleChip(c, true));
   }
 
   function renderErrChips() {
-    const wrap = $id("errChips");
+    const wrap = byId("errChips");
     if (!wrap) return;
 
     wrap.innerHTML = "";
@@ -214,13 +174,18 @@
   }
 
   // ---------------------
-  // Tabs
+  // Tabs (your HTML)
   // ---------------------
   function bindTabs() {
-    const navBtns = qsa("nav button[data-tab]");
-    const tabs = qsa(".tab");
-
+    const navBtns = qsa("header nav button[data-tab]");
+    const tabs = qsa("main .tab");
     if (navBtns.length === 0 || tabs.length === 0) return;
+
+    async function onActivate(tab) {
+      if (tab === "list") await safe(async () => await renderList());
+      if (tab === "diag") safe(renderDiag);
+      if (tab === "settings") await safe(async () => await renderSettings());
+    }
 
     navBtns.forEach(btn => {
       btn.addEventListener("click", async () => {
@@ -228,15 +193,10 @@
           navBtns.forEach(b => b.classList.remove("active"));
           tabs.forEach(t => t.classList.remove("active"));
           btn.classList.add("active");
-          const id = `tab-${btn.dataset.tab}`;
-          const sec = $id(id);
+          const sec = byId(`tab-${btn.dataset.tab}`);
           if (sec) sec.classList.add("active");
         });
-
-        const tab = btn.dataset.tab;
-        if (tab === "list") await renderList();
-        if (tab === "diag") renderDiag();
-        if (tab === "settings") await renderSettings();
+        await onActivate(btn.dataset.tab);
       });
     });
   }
@@ -245,8 +205,8 @@
   // Slider label
   // ---------------------
   function bindSlider() {
-    const overload = $id("overload");
-    const overloadVal = $id("overloadVal");
+    const overload = byId("overload");
+    const overloadVal = byId("overloadVal");
     if (!overload || !overloadVal) return;
     overloadVal.textContent = overload.value;
     overload.addEventListener("input", () => overloadVal.textContent = overload.value);
@@ -256,12 +216,12 @@
   // Auth UI (Supabase optional)
   // ---------------------
   function setAuthMsg(msg) {
-    const el = $id("authMsg");
+    const el = byId("authMsg");
     if (el) el.textContent = msg;
   }
 
   function updateAuthUI() {
-    const emailEl = $id("authEmail");
+    const emailEl = byId("authEmail");
     if (emailEl && sessionUser?.email) emailEl.value = sessionUser.email;
 
     if (!supabase) {
@@ -276,16 +236,13 @@
   }
 
   async function initAuth() {
-    if (!supabase) {
-      updateAuthUI();
-      return;
-    }
+    updateAuthUI();
+    if (!supabase) return;
 
     const sess = await safe(async () => {
       const { data } = await supabase.auth.getSession();
       return data?.session || null;
     });
-
     sessionUser = sess?.user ? { id: sess.user.id, email: sess.user.email } : null;
     updateAuthUI();
 
@@ -297,10 +254,10 @@
       });
     });
 
-    const loginBtn = $id("loginBtn");
+    const loginBtn = byId("loginBtn");
     if (loginBtn) {
       loginBtn.addEventListener("click", async () => {
-        const email = ($id("authEmail")?.value || "").trim();
+        const email = (byId("authEmail")?.value || "").trim();
         if (!email) return setAuthMsg("メールを入れてください。");
 
         const { error } = await supabase.auth.signInWithOtp({
@@ -313,11 +270,13 @@
       });
     }
 
-    const logoutBtn = $id("logoutBtn");
+    const logoutBtn = byId("logoutBtn");
     if (logoutBtn) {
       logoutBtn.addEventListener("click", async () => {
         await safe(() => supabase.auth.signOut());
         setAuthMsg("ログアウトしました。");
+        // UI refresh
+        await safe(async () => await refreshOwnerOptions());
       });
     }
   }
@@ -326,7 +285,7 @@
   // Shared history owner select
   // ---------------------
   async function refreshOwnerOptions() {
-    const sel = $id("ownerSelect");
+    const sel = byId("ownerSelect");
     if (!sel) return;
 
     ownerOptions = [];
@@ -346,11 +305,17 @@
 
     // shares where my email is viewer
     const resp = await safe(async () => {
-      return await supabase.from("log_viewers").select("owner_id").eq("viewer_email", sessionUser.email);
+      return await supabase
+        .from("log_viewers")
+        .select("owner_id")
+        .eq("viewer_email", sessionUser.email);
     });
 
-    if (!resp?.error && Array.isArray(resp?.data)) {
-      const uniq = Array.from(new Set(resp.data.map(x => x.owner_id).filter(Boolean)));
+    const shares = resp?.data || [];
+    const error = resp?.error || null;
+
+    if (!error && Array.isArray(shares)) {
+      const uniq = Array.from(new Set(shares.map(x => x.owner_id).filter(Boolean)));
       let n = 1;
       uniq.forEach((oid) => {
         if (oid !== sessionUser.id) {
@@ -377,8 +342,8 @@
   // Save entry (always local, optional cloud)
   // ---------------------
   async function saveEntry() {
-    const profile = $id("profile")?.value || "その他";
-    const overload = Number($id("overload")?.value ?? 0);
+    const profile = byId("profile")?.value || "その他";
+    const overload = Number(byId("overload")?.value ?? 0);
 
     const entry = {
       id: (crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + "_" + Math.random().toString(16).slice(2)),
@@ -386,15 +351,15 @@
       profile,
       overload,
       err: Array.from(selectedErr),
-      note: ($id("note")?.value || "").trim(),
+      note: (byId("note")?.value || "").trim(),
       actions: {
-        distance: !!$id("actDistance")?.checked,
-        scope: !!$id("actScope")?.checked,
-        body: !!$id("actBody")?.checked,
-        stop: !!$id("actStop")?.checked
+        distance: !!byId("actDistance")?.checked,
+        scope: !!byId("actScope")?.checked,
+        body: !!byId("actBody")?.checked,
+        stop: !!byId("actStop")?.checked
       },
-      boundaryTpl: $id("boundaryTpl")?.value || "",
-      boundaryNote: ($id("boundaryNote")?.value || "").trim()
+      boundaryTpl: byId("boundaryTpl")?.value || "",
+      boundaryNote: (byId("boundaryNote")?.value || "").trim()
     };
 
     // local always
@@ -429,7 +394,7 @@
   }
 
   function bindSave() {
-    const btn = $id("saveBtn");
+    const btn = byId("saveBtn");
     if (!btn) return;
     btn.addEventListener("click", () => safe(() => saveEntry()));
   }
@@ -438,7 +403,7 @@
   // List render (history)
   // ---------------------
   async function renderList() {
-    const ul = $id("logList");
+    const ul = byId("logList");
     if (!ul) return;
 
     ul.innerHTML = "";
@@ -515,7 +480,7 @@
   // Export / Import (LOCAL ONLY)
   // ---------------------
   function bindExportImport() {
-    const exportBtn = $id("exportBtn");
+    const exportBtn = byId("exportBtn");
     if (exportBtn) {
       exportBtn.addEventListener("click", () => {
         safe(() => {
@@ -530,7 +495,7 @@
       });
     }
 
-    const importFile = $id("importFile");
+    const importFile = byId("importFile");
     if (importFile) {
       importFile.addEventListener("change", async (e) => {
         const f = e.target.files?.[0];
@@ -555,7 +520,7 @@
   // Wipe (LOCAL ONLY)
   // ---------------------
   function bindWipe() {
-    const wipeBtn = $id("wipeBtn");
+    const wipeBtn = byId("wipeBtn");
     if (!wipeBtn) return;
     wipeBtn.addEventListener("click", () => {
       safe(() => {
@@ -571,20 +536,25 @@
   // Settings: manage viewers (owner only)
   // ---------------------
   async function renderSettings() {
-    const viewerList = $id("viewerList");
+    const viewerList = byId("viewerList");
     if (viewerList) viewerList.innerHTML = "";
 
     if (!supabase || !sessionUser) return;
 
-    const addBtn = $id("addViewerBtn");
+    const addBtn = byId("addViewerBtn");
     if (addBtn && !addBtn.dataset.bound) {
       addBtn.dataset.bound = "1";
       addBtn.addEventListener("click", async () => {
-        const vEmail = ($id("viewerEmail")?.value || "").trim().toLowerCase();
+        const vEmail = (byId("viewerEmail")?.value || "").trim().toLowerCase();
         if (!vEmail) return alert("閲覧者メールを入れてください。");
-        const resp = await safe(async () => await supabase.from("log_viewers").insert({ owner_id: sessionUser.id, viewer_email: vEmail }));
+
+        const resp = await safe(async () => await supabase
+          .from("log_viewers")
+          .insert({ owner_id: sessionUser.id, viewer_email: vEmail })
+        );
         if (resp?.error) return alert(`追加失敗：${resp.error.message}`);
-        if ($id("viewerEmail")) $id("viewerEmail").value = "";
+
+        if (byId("viewerEmail")) byId("viewerEmail").value = "";
         await renderViewerList();
       });
     }
@@ -593,7 +563,7 @@
   }
 
   async function renderViewerList() {
-    const ul = $id("viewerList");
+    const ul = byId("viewerList");
     if (!ul) return;
     ul.innerHTML = "";
 
@@ -629,7 +599,8 @@
           .from("log_viewers")
           .delete()
           .eq("owner_id", sessionUser.id)
-          .eq("viewer_email", email));
+          .eq("viewer_email", email)
+        );
         if (delResp?.error) alert(`削除失敗：${delResp.error.message}`);
         await renderViewerList();
         await refreshOwnerOptions();
@@ -640,13 +611,8 @@
   }
 
   // ---------------------
-  // Diagnosis (Expanded: more questions, higher precision)
+  // Diagnosis (DIAG_Q: NO OMISSION)
   // ---------------------
-  // 方針：
-  // - CRITICAL/安全を最初に検知
-  // - 生活基盤（睡眠/食/水/疲労）→認知/気分→対人境界→研究作業→衝動→夜ルール
-  // - YES/NOで加点、最後に profileBoost で軽い事前分布補正
-  // ✅ ここは「あなたが貼った DIAG_Q」に省略なしで準拠
   const DIAG_Q = [
     // --- Safety first / crisis ---
     { id:"crisis1", q:"今、危険（自己破壊衝動/安全が揺らぐ/一人がまずい）？", yes:{ "E700": 10, "E710": 4 }, no:{} },
@@ -703,7 +669,6 @@
   ];
 
   function profileBoost(profile, scores) {
-    // プロファイル別・起きやすさ補正（軽く）
     switch (profile) {
       case "恋愛":
         scores["201"] = (scores["201"] || 0) + 1;
@@ -735,7 +700,7 @@
         scores["005"] = (scores["005"] || 0) + 1;
         scores["E320"] = (scores["E320"] || 0) + 1;
         scores["E330"] = (scores["E330"] || 0) + 1;
-        scores["E011"] = (scores["E011"] || 0) + 1; // 良性
+        scores["E011"] = (scores["E011"] || 0) + 1;
         break;
 
       default:
@@ -778,8 +743,8 @@
   }
 
   function renderDiag() {
-    const box = $id("diagBox");
-    const res = $id("diagResult");
+    const box = byId("diagBox");
+    const res = byId("diagResult");
     if (!box || !res) return;
 
     box.innerHTML = "";
@@ -810,8 +775,8 @@
         </div>
       `;
 
-      const yesBtn = $id("yesBtn");
-      const noBtn = $id("noBtn");
+      const yesBtn = byId("yesBtn");
+      const noBtn = byId("noBtn");
       if (yesBtn) yesBtn.addEventListener("click", () => apply(node.yes));
       if (noBtn) noBtn.addEventListener("click", () => apply(node.no));
     }
@@ -825,7 +790,7 @@
     }
 
     function finish() {
-      const profile = $id("profile")?.value || "その他";
+      const profile = byId("profile")?.value || "その他";
       scores = profileBoost(profile, scores);
 
       const top = sortTop(scores);
@@ -873,11 +838,10 @@
         ${rows}
       `;
 
-      $id("restartBtn")?.addEventListener("click", renderDiag);
-      $id("applyBtn")?.addEventListener("click", () => {
+      byId("restartBtn")?.addEventListener("click", renderDiag);
+      byId("applyBtn")?.addEventListener("click", () => {
         safe(() => {
-          // Switch to input tab
-          qs('nav button[data-tab="log"]')?.click();
+          qs('header nav button[data-tab="log"]')?.click();
           setChipsFromCodes(codesToApply);
         });
       });
@@ -887,7 +851,7 @@
   }
 
   // ---------------------
-  // Boot: bind everything after DOM ready
+  // Boot
   // ---------------------
   async function boot() {
     safe(renderErrChips);
@@ -900,11 +864,12 @@
     await safe(async () => { await initAuth(); });
     await safe(async () => { await refreshOwnerOptions(); });
 
-    // If list tab is already active, render once
-    const activeTabBtn = qs("nav button.active[data-tab]");
+    // If currently active tab is list/diag/settings, render it once
+    const activeTabBtn = qs("header nav button.active[data-tab]");
     const activeTab = activeTabBtn?.dataset?.tab;
     if (activeTab === "list") await safe(async () => await renderList());
     if (activeTab === "diag") safe(renderDiag);
+    if (activeTab === "settings") await safe(async () => await renderSettings());
 
     console.log("[WXK] boot ok", {
       supabaseEnabled: !!supabase,
@@ -914,7 +879,6 @@
     });
   }
 
-  // Run boot at DOMContentLoaded (and also if already loaded)
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => boot().catch(console.error), { once: true });
   } else {
