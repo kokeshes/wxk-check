@@ -1,7 +1,7 @@
 // =====================
-// WXK Check (Stable / Single IIFE)
-// - Local logs + optional Supabase (Magic Link) + viewer (read-only)
-// - Matches your HTML ids (#tab-log/#tab-list/#tab-diag/#tab-settings)
+// WXK Check (Robust + High-precision diagnosis + E0000 support)
+// - Offline local logs + optional Supabase cloud sync + shared read-only viewing
+// - Designed to NEVER break UI even if some DOM nodes are missing / duplicated
 // =====================
 
 (() => {
@@ -10,12 +10,12 @@
   // ---------------------
   // Helpers
   // ---------------------
-  const byId = (id) => document.getElementById(id);
+  const $ = (id) => document.getElementById(id);
   const qs = (sel, root = document) => root.querySelector(sel);
   const qsa = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
   function safe(fn) {
-    try { return fn(); } catch (e) { console.error(e); return undefined; }
+    try { return fn(); } catch (e) { console.error("[WXK] error:", e); return undefined; }
   }
 
   function escapeHtml(s) {
@@ -31,54 +31,48 @@
   }
 
   function setText(id, text) {
-    const el = byId(id);
+    const el = $(id);
     if (el) el.textContent = text;
   }
 
-  function toast(msg) {
-    let el = byId("wxk-toast");
-    if (!el) {
-      el = document.createElement("div");
-      el.id = "wxk-toast";
-      el.style.position = "fixed";
-      el.style.left = "50%";
-      el.style.bottom = "18px";
-      el.style.transform = "translateX(-50%)";
-      el.style.padding = "10px 12px";
-      el.style.border = "1px solid rgba(255,255,255,.18)";
-      el.style.background = "rgba(20,20,22,.92)";
-      el.style.backdropFilter = "blur(8px)";
-      el.style.borderRadius = "12px";
-      el.style.fontSize = "14px";
-      el.style.zIndex = "9999";
-      el.style.maxWidth = "92vw";
-      el.style.color = "inherit";
-      el.style.boxShadow = "0 10px 30px rgba(0,0,0,.35)";
-      el.style.display = "none";
-      document.body.appendChild(el);
-    }
-    el.textContent = msg;
-    el.style.display = "block";
-    clearTimeout(toast._t);
-    toast._t = setTimeout(() => (el.style.display = "none"), 2200);
+  function normalizeCode(code) {
+    // Accept both E000 and E0000 as same family, but keep display as E0000
+    if (code === "E000") return "E0000";
+    return code;
   }
+
+  // ---------------------
+  // PWA register
+  // ---------------------
+  safe(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js").catch(() => {});
+    }
+  });
 
   // ---------------------
   // Supabase config (SET YOUR VALUES)
   // ---------------------
-  // If you don't want cloud sync, keep empty strings and app will run local-only.
-  const SUPABASE_URL = "https://nghnvqolxlzblwncpfgw.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_eMbDDZzJfNIheEzK04rsRw_oXMoc7fh";
+  const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
+  const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
 
-  const supabase = safe(() => window.supabase?.createClient?.(SUPABASE_URL, SUPABASE_ANON_KEY)) || null;
+  const supabase = safe(() => {
+    const okUrl = typeof SUPABASE_URL === "string" && SUPABASE_URL.startsWith("https://") && SUPABASE_URL.includes("supabase.co");
+    const okKey = typeof SUPABASE_ANON_KEY === "string" && SUPABASE_ANON_KEY.startsWith("ey") && SUPABASE_ANON_KEY.length > 20;
+    const hasLib = !!(window.supabase && typeof window.supabase.createClient === "function");
+    if (okUrl && okKey && hasLib) return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    return null;
+  });
 
   // ---------------------
   // Constants
   // ---------------------
-  const STORAGE_KEY = "wxk_logs_v2";
+  const STORAGE_KEY = "wxk_logs_v3";
   const SEVERITY_RANK = { "Critical": 3, "High": 2, "Med": 1, "Info": 0 };
 
+  // Unified ERR codes (3-digit + E-codes)
   const ERR_CODES = [
+    // --- 3-digit legacy ---
     { code: "001", name: "常駐要求過負荷", sev: "Critical", quick: "範囲・期限を宣言／距離復帰" },
     { code: "002", name: "境界侵害", sev: "Critical", quick: "中断／距離復帰" },
     { code: "003", name: "責任未定義ループ", sev: "High", quick: "『誰が決める？』を確定" },
@@ -94,35 +88,51 @@
     { code: "301", name: "学際翻訳過多", sev: "Med", quick: "仮結論を先に置く" },
     { code: "303", name: "締切未設定", sev: "High", quick: "擬似締切を作る（外部提出）" },
 
-    { code: "E000", name: "平常運転（異常なし）", sev: "Info", quick: "維持。良かった要因を1行ログ" },
+    // --- E-codes (note: E0000 is canonical display) ---
+    { code: "E0000", name: "平常運転（異常なし）", sev: "Info", quick: "維持。良かった要因を1行ログ" },
+    // 互換：古い参照がE000でもOK（normalizeでE0000に統一）
     { code: "E010", name: "雷出力：安定（集中・快）", sev: "Info", quick: "45–90分ごとに小休止＋水分固定" },
     { code: "E011", name: "思考が“外部モード”へ（距離が取れる）", sev: "Info", quick: "分析OK。感情は日本語で1回着地" },
 
+    // 追加：良い状態の内訳（精度＋説明力UP）
+    { code: "E020", name: "身体コンディション良好", sev: "Info", quick: "現状維持（睡眠/水分/食事を崩さない）" },
+    { code: "E021", name: "境界線が機能している", sev: "Info", quick: "説明しすぎず短文で継続" },
+    { code: "E022", name: "タスク明確で前進中", sev: "Info", quick: "次の一手だけ決めて淡々と" },
+    { code: "E023", name: "情緒が安定（反芻少）", sev: "Info", quick: "刺激を増やさず維持" },
+    { code: "E024", name: "対人負荷が軽い", sev: "Info", quick: "接触密度を今のまま維持" },
+
+    // 生活基盤
     { code: "E100", name: "睡眠不足（軽）", sev: "Med", quick: "仮眠20分 or 今夜の締切を決め就寝固定" },
     { code: "E110", name: "低血糖（焦り・苛立ち）", sev: "Med", quick: "水＋糖＋タンパク（例：おにぎり＋乳製品）" },
     { code: "E120", name: "脱水（頭痛・めまい・情緒揺れ）", sev: "Med", quick: "水＋少量塩分。カフェインは後回し" },
     { code: "E130", name: "過負荷（体力・情緒の同時劣化）", sev: "High", quick: "強制デロード（軽い日）＋睡眠確保" },
 
+    // 対人・境界
     { code: "E200", name: "境界が薄くなる（抱え込み）", sev: "Med", quick: "「できる/できない」を短文で宣言（説明しない）" },
     { code: "E210", name: "侵害刺激でフリーズ／反芻", sev: "High", quick: "距離→事実のみ記録→上長/第三者へ共有" },
     { code: "E220", name: "危険接近（引き込まれリスク）", sev: "Critical", quick: "接触ルール固定（時間/場所/回数）＋同席者" },
 
+    // 気分・認知
     { code: "E300", name: "焦燥（タスク過密で空回り）", sev: "Med", quick: "「今日の最小勝利」を1つ決め他は保留" },
     { code: "E310", name: "怒りの熱（言葉が強くなる）", sev: "Med", quick: "即返信しない→水→5分歩く。文章は短く" },
     { code: "E320", name: "不安増幅（最悪想定が止まらない）", sev: "High", quick: "通知OFF→確認できる事実だけ紙に書く" },
     { code: "E330", name: "自己否定ループ（恥・罪悪感）", sev: "High", quick: "評価軸を外に置く（睡眠/栄養/水分/運動）" },
 
+    // 研究・作業
     { code: "E500", name: "過集中前兆（時間が消える）", sev: "Med", quick: "タイマー45–60分＋水分を手元固定" },
     { code: "E510", name: "反芻（同じ一文を回し続ける）", sev: "High", quick: "「結論保留」でメモに封印→身体作業へ切替" },
 
+    // 渇望・衝動
     { code: "E400", name: "渇望（軽）：口寂しさ／手持ち無沙汰", sev: "Med", quick: "代替行動を固定（ガム/炭酸/散歩3分）" },
     { code: "E410", name: "渇望（強）：思考が奪われる", sev: "High", quick: "補給→場所移動→5分だけ別タスク" },
 
+    // 危機
     { code: "E700", name: "危機：自己破壊衝動／安全が揺らぐ", sev: "Critical", quick: "一人にならない／刺激源から離脱／短文連絡" },
     { code: "E710", name: "現実感の低下（ぼんやり／自分が遠い）", sev: "Critical", quick: "五感接地（冷水/香り/足裏）＋誰かの声" },
   ];
 
-  function getErrMeta(code) {
+  function getErrMeta(codeRaw) {
+    const code = normalizeCode(codeRaw);
     const ref = ERR_CODES.find(e => e.code === code);
     if (!ref) return { sev: "Info", name: "不明", quick: "距離復帰／範囲を決める" };
     return ref;
@@ -142,12 +152,12 @@
   // ---------------------
   // State
   // ---------------------
-  let sessionUser = null;   // { id, email }
-  let ownerOptions = [];    // [{owner_id,label,isSelf}]
-  let activeOwnerId = null; // "local" or uuid
+  let sessionUser = null;
+  let ownerOptions = [];
+  let activeOwnerId = null;
 
   // ---------------------
-  // ERR chips
+  // Chips
   // ---------------------
   const selectedErr = new Set();
   const chipButtons = new Map();
@@ -170,12 +180,16 @@
   }
 
   function renderErrChips() {
-    const wrap = byId("errChips");
+    const wrap = $("errChips");
     if (!wrap) return;
+
     wrap.innerHTML = "";
     chipButtons.clear();
 
     ERR_CODES.forEach(e => {
+      // 診断専用Infoもチップに出すか？ → 出さない（E系Infoは診断結果として見せたい）
+      // ただしユーザーが手動選択したい場合もあるので、表示したいならここを調整。
+      // 今回は「全部表示」にしておく。
       const b = document.createElement("button");
       b.type = "button";
       b.className = "chip";
@@ -191,9 +205,9 @@
   // Tabs
   // ---------------------
   function bindTabs() {
-    const navBtns = qsa("header nav button[data-tab]");
-    const tabs = qsa("main section.tab");
-    if (!navBtns.length || !tabs.length) return;
+    const navBtns = qsa("nav button[data-tab]");
+    const tabs = qsa(".tab");
+    if (navBtns.length === 0 || tabs.length === 0) return;
 
     navBtns.forEach(btn => {
       btn.addEventListener("click", async () => {
@@ -201,8 +215,7 @@
           navBtns.forEach(b => b.classList.remove("active"));
           tabs.forEach(t => t.classList.remove("active"));
           btn.classList.add("active");
-          const id = `tab-${btn.dataset.tab}`;
-          const sec = byId(id);
+          const sec = $(`tab-${btn.dataset.tab}`);
           if (sec) sec.classList.add("active");
         });
 
@@ -218,8 +231,8 @@
   // Slider label
   // ---------------------
   function bindSlider() {
-    const overload = byId("overload");
-    const overloadVal = byId("overloadVal");
+    const overload = $("overload");
+    const overloadVal = $("overloadVal");
     if (!overload || !overloadVal) return;
     overloadVal.textContent = overload.value;
     overload.addEventListener("input", () => overloadVal.textContent = overload.value);
@@ -229,12 +242,12 @@
   // Auth UI (Supabase optional)
   // ---------------------
   function setAuthMsg(msg) {
-    const el = byId("authMsg");
+    const el = $("authMsg");
     if (el) el.textContent = msg;
   }
 
   function updateAuthUI() {
-    const emailEl = byId("authEmail");
+    const emailEl = $("authEmail");
     if (emailEl && sessionUser?.email) emailEl.value = sessionUser.email;
 
     if (!supabase) {
@@ -270,10 +283,11 @@
       });
     });
 
-    const loginBtn = byId("loginBtn");
-    if (loginBtn) {
+    const loginBtn = $("loginBtn");
+    if (loginBtn && !loginBtn.dataset.bound) {
+      loginBtn.dataset.bound = "1";
       loginBtn.addEventListener("click", async () => {
-        const email = (byId("authEmail")?.value || "").trim();
+        const email = ($("authEmail")?.value || "").trim();
         if (!email) return setAuthMsg("メールを入れてください。");
 
         const { error } = await supabase.auth.signInWithOtp({
@@ -286,8 +300,9 @@
       });
     }
 
-    const logoutBtn = byId("logoutBtn");
-    if (logoutBtn) {
+    const logoutBtn = $("logoutBtn");
+    if (logoutBtn && !logoutBtn.dataset.bound) {
+      logoutBtn.dataset.bound = "1";
       logoutBtn.addEventListener("click", async () => {
         await safe(() => supabase.auth.signOut());
         setAuthMsg("ログアウトしました。");
@@ -299,7 +314,7 @@
   // Shared history owner select
   // ---------------------
   async function refreshOwnerOptions() {
-    const sel = byId("ownerSelect");
+    const sel = $("ownerSelect");
     if (!sel) return;
 
     ownerOptions = [];
@@ -315,17 +330,15 @@
 
     ownerOptions.push({ owner_id: sessionUser.id, label: "自分（クラウド）", isSelf: true });
 
-    const { data: shares, error } = await safe(async () => {
+    const resp = await safe(async () => {
       return await supabase.from("log_viewers").select("owner_id").eq("viewer_email", sessionUser.email);
-    }) || { data: null, error: null };
+    });
 
-    if (!error && Array.isArray(shares)) {
-      const uniq = Array.from(new Set(shares.map(x => x.owner_id).filter(Boolean)));
+    if (!resp?.error && Array.isArray(resp?.data)) {
+      const uniq = Array.from(new Set(resp.data.map(x => x.owner_id).filter(Boolean)));
       let n = 1;
       uniq.forEach((oid) => {
-        if (oid !== sessionUser.id) {
-          ownerOptions.push({ owner_id: oid, label: `共有：オーナー#${n++}`, isSelf: false });
-        }
+        if (oid !== sessionUser.id) ownerOptions.push({ owner_id: oid, label: `共有：オーナー#${n++}`, isSelf: false });
       });
     }
 
@@ -347,24 +360,24 @@
   // Save entry (always local, optional cloud)
   // ---------------------
   async function saveEntry() {
-    const profile = byId("profile")?.value || "その他";
-    const overload = Number(byId("overload")?.value ?? 0);
+    const profile = $("profile")?.value || "その他";
+    const overloadVal = Number($("overload")?.value ?? 0);
 
     const entry = {
       id: (crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + "_" + Math.random().toString(16).slice(2)),
       ts: new Date().toISOString(),
       profile,
-      overload,
+      overload: overloadVal,
       err: Array.from(selectedErr),
-      note: (byId("note")?.value || "").trim(),
+      note: ($("note")?.value || "").trim(),
       actions: {
-        distance: !!byId("actDistance")?.checked,
-        scope: !!byId("actScope")?.checked,
-        body: !!byId("actBody")?.checked,
-        stop: !!byId("actStop")?.checked
+        distance: !!$("actDistance")?.checked,
+        scope: !!$("actScope")?.checked,
+        body: !!$("actBody")?.checked,
+        stop: !!$("actStop")?.checked
       },
-      boundaryTpl: byId("boundaryTpl")?.value || "",
-      boundaryNote: (byId("boundaryNote")?.value || "").trim()
+      boundaryTpl: $("boundaryTpl")?.value || "",
+      boundaryNote: ($("boundaryNote")?.value || "").trim()
     };
 
     const logs = loadLogsLocal();
@@ -384,9 +397,9 @@
         boundary_note: entry.boundaryNote
       };
 
-      const { error } = await safe(async () => await supabase.from("logs").insert(payload)) || { error: null };
-      if (error) {
-        setText("saveMsg", `ローカル保存OK / クラウド同期失敗：${error.message}`);
+      const ins = await safe(async () => await supabase.from("logs").insert(payload));
+      if (ins?.error) {
+        setText("saveMsg", `ローカル保存OK / クラウド同期失敗：${ins.error.message}`);
         setTimeout(() => setText("saveMsg", ""), 2400);
         return;
       }
@@ -397,8 +410,9 @@
   }
 
   function bindSave() {
-    const btn = byId("saveBtn");
-    if (!btn) return;
+    const btn = $("saveBtn");
+    if (!btn || btn.dataset.bound) return;
+    btn.dataset.bound = "1";
     btn.addEventListener("click", () => safe(() => saveEntry()));
   }
 
@@ -406,11 +420,10 @@
   // List render (history)
   // ---------------------
   async function renderList() {
-    const ul = byId("logList");
+    const ul = $("logList");
     if (!ul) return;
 
     ul.innerHTML = "";
-
     await refreshOwnerOptions();
 
     if (!supabase || !sessionUser || activeOwnerId === "local") {
@@ -441,18 +454,15 @@
         .limit(300);
     });
 
-    const data = resp?.data || null;
-    const error = resp?.error || null;
-
-    if (error) {
+    if (resp?.error) {
       const li = document.createElement("li");
       li.className = "card";
-      li.innerHTML = `<div class="muted">取得失敗：${escapeHtml(error.message)}</div>`;
+      li.innerHTML = `<div class="muted">取得失敗：${escapeHtml(resp.error.message)}</div>`;
       ul.appendChild(li);
       return;
     }
 
-    (data || []).forEach(row => {
+    (resp?.data || []).forEach(row => {
       const li = document.createElement("li");
       li.className = "card";
       const errText = row.err?.length ? row.err.join(", ") : "—";
@@ -466,11 +476,9 @@
       `;
 
       if (viewingSelf) {
-        const delBtn = li.querySelector("[data-del]");
-        delBtn?.addEventListener("click", async () => {
-          const id = row.id;
-          const delResp = await safe(async () => await supabase.from("logs").delete().eq("id", id));
-          if (delResp?.error) alert(`削除失敗：${delResp.error.message}`);
+        li.querySelector("[data-del]")?.addEventListener("click", async () => {
+          const del = await safe(async () => await supabase.from("logs").delete().eq("id", row.id));
+          if (del?.error) alert(`削除失敗：${del.error.message}`);
           await renderList();
         });
       }
@@ -483,8 +491,9 @@
   // Export / Import (LOCAL ONLY)
   // ---------------------
   function bindExportImport() {
-    const exportBtn = byId("exportBtn");
-    if (exportBtn) {
+    const exportBtn = $("exportBtn");
+    if (exportBtn && !exportBtn.dataset.bound) {
+      exportBtn.dataset.bound = "1";
       exportBtn.addEventListener("click", () => {
         safe(() => {
           const blob = new Blob([JSON.stringify(loadLogsLocal(), null, 2)], { type: "application/json" });
@@ -498,8 +507,9 @@
       });
     }
 
-    const importFile = byId("importFile");
-    if (importFile) {
+    const importFile = $("importFile");
+    if (importFile && !importFile.dataset.bound) {
+      importFile.dataset.bound = "1";
       importFile.addEventListener("change", async (e) => {
         const f = e.target.files?.[0];
         if (!f) return;
@@ -523,8 +533,9 @@
   // Wipe (LOCAL ONLY)
   // ---------------------
   function bindWipe() {
-    const wipeBtn = byId("wipeBtn");
-    if (!wipeBtn) return;
+    const wipeBtn = $("wipeBtn");
+    if (!wipeBtn || wipeBtn.dataset.bound) return;
+    wipeBtn.dataset.bound = "1";
     wipeBtn.addEventListener("click", () => {
       safe(() => {
         if (confirm("ローカルデータを削除します。よろしいですか？（クラウドは消えません）")) {
@@ -539,21 +550,22 @@
   // Settings: manage viewers (owner only)
   // ---------------------
   async function renderSettings() {
-    const viewerList = byId("viewerList");
+    const viewerList = $("viewerList");
     if (viewerList) viewerList.innerHTML = "";
 
     if (!supabase || !sessionUser) return;
 
-    const addBtn = byId("addViewerBtn");
+    const addBtn = $("addViewerBtn");
     if (addBtn && !addBtn.dataset.bound) {
       addBtn.dataset.bound = "1";
       addBtn.addEventListener("click", async () => {
-        const vEmail = (byId("viewerEmail")?.value || "").trim().toLowerCase();
+        const vEmail = ($("viewerEmail")?.value || "").trim().toLowerCase();
         if (!vEmail) return alert("閲覧者メールを入れてください。");
-        const resp = await safe(async () => await supabase.from("log_viewers").insert({ owner_id: sessionUser.id, viewer_email: vEmail }));
-        if (resp?.error) return alert(`追加失敗：${resp.error.message}`);
-        if (byId("viewerEmail")) byId("viewerEmail").value = "";
+        const ins = await safe(async () => await supabase.from("log_viewers").insert({ owner_id: sessionUser.id, viewer_email: vEmail }));
+        if (ins?.error) return alert(`追加失敗：${ins.error.message}`);
+        if ($("viewerEmail")) $("viewerEmail").value = "";
         await renderViewerList();
+        await refreshOwnerOptions();
       });
     }
 
@@ -561,10 +573,10 @@
   }
 
   async function renderViewerList() {
-    const ul = byId("viewerList");
+    const ul = $("viewerList");
     if (!ul) return;
-    ul.innerHTML = "";
 
+    ul.innerHTML = "";
     if (!supabase || !sessionUser) return;
 
     const resp = await safe(async () => {
@@ -592,13 +604,12 @@
       `;
 
       li.querySelector("[data-rm]")?.addEventListener("click", async () => {
-        const email = v.viewer_email;
-        const delResp = await safe(async () => await supabase
+        const del = await safe(async () => await supabase
           .from("log_viewers")
           .delete()
           .eq("owner_id", sessionUser.id)
-          .eq("viewer_email", email));
-        if (delResp?.error) alert(`削除失敗：${delResp.error.message}`);
+          .eq("viewer_email", v.viewer_email));
+        if (del?.error) alert(`削除失敗：${del.error.message}`);
         await renderViewerList();
         await refreshOwnerOptions();
       });
@@ -607,97 +618,83 @@
     });
   }
 
-  // ---------------------
-  // Diagnosis (DIAG_Q: NO OMISSION)
-  // ---------------------
-  const DIAG_Q = [
-    { id:"crisis1", q:"今、危険（自己破壊衝動/安全が揺らぐ/一人がまずい）？", yes:{ "E700": 10, "E710": 4 }, no:{} },
-    { id:"dereal", q:"現実感が薄い／自分が遠い感じがある？", yes:{ "E710": 9, "E700": 3 }, no:{} },
-    { id:"panic", q:"胸が詰まる・過呼吸っぽい・動悸が強い？", yes:{ "E710": 5, "E320": 3 }, no:{} },
-    { id:"unsafeEnv", q:"いま居る場所/相手が安全じゃない（離れるべき）？", yes:{ "E700": 6, "E220": 4, "002": 3 }, no:{} },
+  // =====================
+  // Diagnosis engine (E0000 baseline + more questions)
+  // =====================
 
-    { id:"sleep", q:"睡眠が足りない（6h未満/質が悪い）？", yes:{ "E100": 5, "E320": 2, "E330": 2, "005": 1 }, no:{} },
-    { id:"sleep2", q:"寝不足が2日以上続いている？", yes:{ "E100": 3, "E130": 2, "E320": 2 }, no:{} },
-    { id:"food", q:"空腹・食事抜き・糖が足りない感じ？", yes:{ "E110": 5, "E310": 2, "E300": 2 }, no:{} },
-    { id:"water", q:"水分不足っぽい（口渇/頭痛/めまい/暖房/運動後）？", yes:{ "E120": 5, "E320": 2, "E330": 1 }, no:{} },
-    { id:"sick", q:"風邪/体調不良で出力が荒れてる？", yes:{ "E130": 3, "E320": 1, "E330": 1 }, no:{} },
-    { id:"overloadBody", q:"疲労が溜まり、体力と情緒が同時に落ちてる？", yes:{ "E130": 6, "001": 2, "004": 2 }, no:{} },
-    { id:"overtrain", q:"運動/仕事/対人の負荷を積みすぎて回復を軽視してる？", yes:{ "E130": 4, "E500": 1, "E330": 1 }, no:{} },
+  function addScore(scores, codeRaw, delta) {
+    const code = normalizeCode(codeRaw);
+    scores[code] = (scores[code] || 0) + delta;
+  }
 
-    { id:"boundaryThin", q:"優しくしすぎて抱え込みモードになってる？", yes:{ "E200": 5, "104": 3, "004": 2 }, no:{} },
-    { id:"invasion", q:"相手が踏み込みすぎ（時間/身体/私生活/尊厳）？", yes:{ "002": 5, "E210": 3, "E220": 2 }, no:{} },
-    { id:"freeze", q:"侵害刺激（嫌な言葉/圧/ハラスメント）で固まる・反芻が出てる？", yes:{ "E210": 7, "002": 3, "203": 2 }, no:{} },
-    { id:"dangerApproach", q:"相手の踏み込みが増えて“引き込まれそう”？（密室化/頻度増/曖昧許容）", yes:{ "E220": 8, "202": 4, "201": 3 }, no:{} },
-    { id:"test", q:"相手が試し行為（嫉妬/沈黙/既読無視/揺さぶり）をしてる？", yes:{ "203": 7, "202": 4, "E220": 2 }, no:{ "102": 2 } },
-    { id:"rescue", q:"相手の問題を“救わなきゃ”で背負ってない？", yes:{ "004": 4, "E200": 2, "104": 2 }, no:{} },
-    { id:"role", q:"“支える役/判断役”を続けている？", yes:{ "001": 4, "104": 3, "004": 2 }, no:{ "E011": 1 } },
-    { id:"end", q:"終了条件（いつまで/どこまで）が明示されてる？", yes:{}, no:{ "001": 5, "003": 3, "104": 2 } },
-    { id:"responsibility", q:"責任の所在は明確？（誰が決める？）", yes:{}, no:{ "003": 5, "001": 2 } },
-    { id:"decisionOwner", q:"『誰が決める？』が曖昧なまま、こちらが埋め合わせて決めてない？", yes:{ "003": 5, "104": 2 }, no:{} },
+  function clampScores(scores) {
+    for (const k of Object.keys(scores)) {
+      if (!Number.isFinite(scores[k])) scores[k] = 0;
+      if (scores[k] < 0) scores[k] = 0;
+    }
+    return scores;
+  }
 
-    { id:"anx", q:"最悪想定が止まらない？", yes:{ "E320": 6, "005": 1, "003": 1 }, no:{} },
-    { id:"scan", q:"通知/相手の反応を何度も確認してしまう？", yes:{ "E320": 3, "203": 1, "201": 1 }, no:{} },
-    { id:"selfhate", q:"自己否定（恥/罪悪感/罵倒）ループに入ってる？", yes:{ "E330": 6, "004": 2 }, no:{} },
-    { id:"anger", q:"怒りの熱で言葉が強くなりそう？（即返信したい）", yes:{ "E310": 5, "102": 1 }, no:{} },
-    { id:"rush", q:"焦ってタスクが空回りしてる？（手が散る/全部重い）", yes:{ "E300": 5, "303": 2 }, no:{} },
-    { id:"meaning", q:"意味を生成しすぎて疲れてる？（解釈が止まらない）", yes:{ "005": 5, "E320": 1, "003": 1 }, no:{} },
-    { id:"overshare", q:"初動で開示しすぎて後から重くなりそう？", yes:{ "101": 4, "E200": 1 }, no:{} },
+  function isGoodInfo(code) {
+    return ["E0000", "E010", "E011", "E020", "E021", "E022", "E023", "E024"].includes(code);
+  }
 
-    { id:"hyperfocus", q:"時間感覚が飛ぶ没入が出てる？（補給忘れ）", yes:{ "E500": 5, "E010": 2 }, no:{} },
-    { id:"ruminateWork", q:"同じ文/同じ考えを焼き続けて進まない？", yes:{ "E510": 6, "003": 1, "005": 1 }, no:{} },
-    { id:"interdiscipline", q:"論点が多領域にまたがり『翻訳』だけで時間が溶けてる？", yes:{ "301": 6, "E510": 2, "E300": 1 }, no:{} },
-    { id:"premiseMissing", q:"結論より先に前提・定義・用語の整備で止まってる？", yes:{ "301": 5, "E510": 2 }, no:{} },
-    { id:"deadline", q:"締切/提出が曖昧で先延ばしが起きてる？", yes:{ "303": 6, "E300": 1 }, no:{} },
-    { id:"responsibilityWork", q:"『誰が決める？』が曖昧で作業が止まってる？", yes:{ "003": 4, "E510": 1 }, no:{} },
-
-    { id:"urgeLight", q:"口寂しさ/儀式が欲しい程度の渇望がある？", yes:{ "E400": 4 }, no:{} },
-    { id:"urgeStrong", q:"渇望が強く、思考が奪われてる？", yes:{ "E410": 6, "E130": 2 }, no:{} },
-    { id:"impulse", q:"衝動で何か（連絡/購入/自己処理）をしそう？", yes:{ "E700": 2, "E320": 2, "E310": 2 }, no:{} },
-
-    { id:"night", q:"夜に結論を出したくなってる？", yes:{ "005": 5, "003": 2, "E320": 2 }, no:{} },
-    { id:"lateMsg", q:"夜に長文を送りたくなってる？", yes:{ "005": 3, "101": 2, "E310": 1 }, no:{} },
-  ];
+  function hasRisk(scores) {
+    let sum = 0;
+    for (const [code, v] of Object.entries(scores)) {
+      if (isGoodInfo(code)) continue;
+      sum += (v || 0);
+    }
+    return sum >= 3;
+  }
 
   function profileBoost(profile, scores) {
+    // リスクが出た場合のみ呼ぶ
     switch (profile) {
       case "恋愛":
-        scores["201"] = (scores["201"] || 0) + 1;
-        scores["202"] = (scores["202"] || 0) + 1;
-        scores["102"] = (scores["102"] || 0) + 1;
-        scores["E200"] = (scores["E200"] || 0) + 1;
-        scores["E220"] = (scores["E220"] || 0) + 1;
+        addScore(scores, "201", 1);
+        addScore(scores, "202", 1);
+        addScore(scores, "102", 1);
+        addScore(scores, "E200", 1);
+        addScore(scores, "E220", 1);
         break;
       case "仕事/研究":
-        scores["003"] = (scores["003"] || 0) + 1;
-        scores["301"] = (scores["301"] || 0) + 1;
-        scores["303"] = (scores["303"] || 0) + 1;
-        scores["E300"] = (scores["E300"] || 0) + 1;
-        scores["E510"] = (scores["E510"] || 0) + 1;
-        scores["E500"] = (scores["E500"] || 0) + 1;
+        addScore(scores, "003", 1);
+        addScore(scores, "301", 1);
+        addScore(scores, "303", 1);
+        addScore(scores, "E300", 1);
+        addScore(scores, "E510", 1);
+        addScore(scores, "E500", 1);
         break;
       case "相談/友人":
-        scores["004"] = (scores["004"] || 0) + 1;
-        scores["104"] = (scores["104"] || 0) + 1;
-        scores["101"] = (scores["101"] || 0) + 1;
-        scores["E200"] = (scores["E200"] || 0) + 1;
-        scores["E210"] = (scores["E210"] || 0) + 1;
-        scores["E330"] = (scores["E330"] || 0) + 1;
+        addScore(scores, "004", 1);
+        addScore(scores, "104", 1);
+        addScore(scores, "101", 1);
+        addScore(scores, "E200", 1);
+        addScore(scores, "E210", 1);
+        addScore(scores, "E330", 1);
         break;
       case "単独":
-        scores["005"] = (scores["005"] || 0) + 1;
-        scores["E320"] = (scores["E320"] || 0) + 1;
-        scores["E330"] = (scores["E330"] || 0) + 1;
-        scores["E011"] = (scores["E011"] || 0) + 1;
+        addScore(scores, "005", 1);
+        addScore(scores, "E320", 1);
+        addScore(scores, "E330", 1);
+        addScore(scores, "E011", 1);
         break;
       default:
-        scores["E300"] = (scores["E300"] || 0) + 1;
-        scores["004"]  = (scores["004"]  || 0) + 1;
+        addScore(scores, "E300", 1);
+        addScore(scores, "004", 1);
         break;
     }
     return scores;
   }
 
   function sortTop(scores) {
+    clampScores(scores);
+
+    // E0000は必ず候補に残す（0点でも最低1点扱い）
+    if (!("E0000" in scores)) scores["E0000"] = 1;
+    if (scores["E0000"] <= 0) scores["E0000"] = 1;
+
     const arr = Object.entries(scores || {})
       .filter(([, v]) => (v || 0) > 0)
       .map(([code, score]) => {
@@ -718,9 +715,6 @@
       return String(a.code).localeCompare(String(b.code));
     });
 
-    if (arr.length === 0) {
-      return [{ code: "OK", score: 0, sev: "Info", sevRank: 0, name: "Monitor", quick: "今日は大丈夫。ログだけ残す" }];
-    }
     return arr.slice(0, 3);
   }
 
@@ -728,16 +722,187 @@
     return (top || []).some(t => t.sev === "Critical");
   }
 
+  // Branch format:
+  //  yes: { add:{...}, sub:{...} }
+  //  no : { add:{...}, sub:{...} }
+  // Rule:
+  //  - Problem YES -> add risk + sub E0000
+  //  - Good YES/NO -> add E0000 + good-infos
+  const DIAG_Q = [
+    // --- Good state confirmations (increase true-negative precision) ---
+    { id:"g_sleep_ok", q:"睡眠は足りている（6h以上/質が悪すぎない）？",
+      yes:{ add:{ "E0000": 3, "E020": 2, "E023": 1 }, sub:{} },
+      no :{ add:{ "E100": 6, "E320": 2 }, sub:{ "E0000": 4 } } },
+
+    { id:"g_food_ok", q:"今日は食事を抜いていない（低血糖っぽさがない）？",
+      yes:{ add:{ "E0000": 2, "E020": 2 }, sub:{} },
+      no :{ add:{ "E110": 6, "E300": 2, "E310": 1 }, sub:{ "E0000": 3 } } },
+
+    { id:"g_water_ok", q:"水分は足りている（口渇/頭痛/めまいがない）？",
+      yes:{ add:{ "E0000": 2, "E020": 2 }, sub:{} },
+      no :{ add:{ "E120": 6, "E320": 2 }, sub:{ "E0000": 3 } } },
+
+    { id:"g_body_ok", q:"痛み・体調不良が意思決定に影響していない？",
+      yes:{ add:{ "E0000": 2, "E020": 1 }, sub:{} },
+      no :{ add:{ "E130": 4, "E320": 1 }, sub:{ "E0000": 2 } } },
+
+    { id:"g_schedule_ok", q:"今日は予定が詰まりすぎていない？",
+      yes:{ add:{ "E0000": 2, "E023": 1 }, sub:{} },
+      no :{ add:{ "E300": 4, "E130": 2 }, sub:{ "E0000": 2 } } },
+
+    { id:"g_boundary_ok", q:"境界線が守れている（抱え込み・過剰対応をしていない）？",
+      yes:{ add:{ "E0000": 2, "E021": 3, "E024": 1 }, sub:{} },
+      no :{ add:{ "E200": 6, "104": 2, "004": 1 }, sub:{ "E0000": 3 } } },
+
+    { id:"g_task_ok", q:"今日のタスクは明確（次の一手が決まっている）？",
+      yes:{ add:{ "E0000": 2, "E022": 3 }, sub:{} },
+      no :{ add:{ "E300": 5, "303": 2 }, sub:{ "E0000": 2 } } },
+
+    { id:"g_mood_ok", q:"今の気分は安定している（反芻が少ない）？",
+      yes:{ add:{ "E0000": 2, "E023": 3 }, sub:{} },
+      no :{ add:{ "E320": 4, "E510": 2, "E330": 1 }, sub:{ "E0000": 2 } } },
+
+    // --- Safety / crisis ---
+    { id:"c_crisis", q:"今、危険（自己破壊衝動/安全が揺らぐ/一人がまずい）？",
+      yes:{ add:{ "E700": 10, "E710": 4 }, sub:{ "E0000": 8 } },
+      no :{ add:{ "E0000": 1 }, sub:{} } },
+
+    { id:"c_dereal", q:"現実感が薄い／自分が遠い感じがある？",
+      yes:{ add:{ "E710": 9, "E700": 3 }, sub:{ "E0000": 6 } },
+      no :{ add:{ "E0000": 1 }, sub:{} } },
+
+    { id:"c_unsafe_place", q:"今いる場所/相手/状況が安全ではない（離れるべき）？",
+      yes:{ add:{ "E700": 6, "E220": 4, "002": 3 }, sub:{ "E0000": 5 } },
+      no :{ add:{ "E0000": 1 }, sub:{} } },
+
+    // --- Body / life base (granular) ---
+    { id:"b_sleep_debt", q:"寝不足が2日以上続いている？",
+      yes:{ add:{ "E100": 4, "E130": 3, "E320": 2 }, sub:{ "E0000": 3 } },
+      no :{ add:{ "E0000": 1 }, sub:{} } },
+
+    { id:"b_overload_body", q:"疲労が溜まり、体力と情緒が同時に落ちてる？",
+      yes:{ add:{ "E130": 7, "001": 2, "004": 2 }, sub:{ "E0000": 3 } },
+      no :{ add:{ "E0000": 1 }, sub:{} } },
+
+    { id:"b_stimulants", q:"カフェイン/ニコチン/刺激で整えようとして逆に乱れてる？",
+      yes:{ add:{ "E320": 2, "E400": 2, "E410": 1 }, sub:{ "E0000": 1 } },
+      no :{ add:{ "E0000": 1 }, sub:{} } },
+
+    // --- People / boundary (granular) ---
+    { id:"p_invasion", q:"相手の踏み込みすぎ（時間/身体/尊厳）を感じる？",
+      yes:{ add:{ "002": 6, "E210": 3, "E220": 2 }, sub:{ "E0000": 4 } },
+      no :{ add:{ "E0000": 1, "E021": 1 }, sub:{} } },
+
+    { id:"p_freeze", q:"侵害刺激で固まる・反芻が出てる？",
+      yes:{ add:{ "E210": 7, "002": 3, "203": 2 }, sub:{ "E0000": 3 } },
+      no :{ add:{ "E0000": 1 }, sub:{} } },
+
+    { id:"p_pull", q:"相手の踏み込みが増えて“引き込まれそう”？（密室化/頻度増/曖昧許容）",
+      yes:{ add:{ "E220": 8, "202": 4, "201": 3 }, sub:{ "E0000": 4 } },
+      no :{ add:{ "E0000": 1, "E024": 1 }, sub:{} } },
+
+    { id:"p_test", q:"相手が試し行為（嫉妬/沈黙/揺さぶり）をしてる？",
+      yes:{ add:{ "203": 7, "202": 4, "E220": 2 }, sub:{ "E0000": 3 } },
+      no :{ add:{ "E0000": 1, "102": 1 }, sub:{} } },
+
+    { id:"p_role", q:"“支える役/判断役”を続けすぎてる？",
+      yes:{ add:{ "001": 4, "104": 3, "004": 2 }, sub:{ "E0000": 2 } },
+      no :{ add:{ "E0000": 1, "E011": 1 }, sub:{} } },
+
+    { id:"p_end_amb", q:"終了条件（いつまで/どこまで）が曖昧？",
+      yes:{ add:{ "001": 5, "003": 3, "104": 2 }, sub:{ "E0000": 3 } },
+      no :{ add:{ "E0000": 1, "E021": 1 }, sub:{} } },
+
+    { id:"p_responsibility", q:"責任の所在が曖昧で、あなたが埋め合わせてる？",
+      yes:{ add:{ "003": 6, "001": 2 }, sub:{ "E0000": 3 } },
+      no :{ add:{ "E0000": 1, "E022": 1 }, sub:{} } },
+
+    { id:"p_overshare", q:"初動で開示しすぎて後から重くなりそう？",
+      yes:{ add:{ "101": 4, "E200": 1 }, sub:{ "E0000": 2 } },
+      no :{ add:{ "E0000": 1 }, sub:{} } },
+
+    // --- Cognition / mood ---
+    { id:"m_anx", q:"最悪想定が止まらない？",
+      yes:{ add:{ "E320": 6, "005": 1, "003": 1 }, sub:{ "E0000": 3 } },
+      no :{ add:{ "E0000": 1, "E023": 1 }, sub:{} } },
+
+    { id:"m_checking", q:"通知/相手の反応を何度も確認してしまう？",
+      yes:{ add:{ "E320": 3, "203": 1, "201": 1 }, sub:{ "E0000": 2 } },
+      no :{ add:{ "E0000": 1 }, sub:{} } },
+
+    { id:"m_selfhate", q:"自己否定（恥/罪悪感/罵倒）ループ？",
+      yes:{ add:{ "E330": 6, "004": 2 }, sub:{ "E0000": 3 } },
+      no :{ add:{ "E0000": 1 }, sub:{} } },
+
+    { id:"m_anger", q:"怒りの熱で言葉が強くなりそう？（即返信したい）",
+      yes:{ add:{ "E310": 5, "102": 1 }, sub:{ "E0000": 2 } },
+      no :{ add:{ "E0000": 1 }, sub:{} } },
+
+    { id:"m_rush", q:"焦ってタスクが空回り？（手が散る/全部重い）",
+      yes:{ add:{ "E300": 5, "303": 2 }, sub:{ "E0000": 2 } },
+      no :{ add:{ "E0000": 1, "E022": 1 }, sub:{} } },
+
+    { id:"m_meaning", q:"意味生成が止まらず疲れてる？",
+      yes:{ add:{ "005": 5, "E320": 1, "003": 1 }, sub:{ "E0000": 2 } },
+      no :{ add:{ "E0000": 1 }, sub:{} } },
+
+    // --- Work / research ---
+    { id:"w_hyperfocus", q:"時間感覚が飛ぶ没入が出てる（補給忘れ）？",
+      yes:{ add:{ "E500": 5, "E010": 2 }, sub:{ "E0000": 1 } },
+      no :{ add:{ "E0000": 1 }, sub:{} } },
+
+    { id:"w_ruminate", q:"同じ文/同じ考えを焼き続けて進まない？",
+      yes:{ add:{ "E510": 6, "003": 1, "005": 1 }, sub:{ "E0000": 2 } },
+      no :{ add:{ "E0000": 1, "E022": 1 }, sub:{} } },
+
+    { id:"w_interdiscipline", q:"多領域にまたがり『翻訳』だけで時間が溶けてる？",
+      yes:{ add:{ "301": 6, "E510": 2, "E300": 1 }, sub:{ "E0000": 2 } },
+      no :{ add:{ "E0000": 1 }, sub:{} } },
+
+    { id:"w_premise", q:"前提・定義整備で止まって前進感がない？",
+      yes:{ add:{ "301": 5, "E510": 2 }, sub:{ "E0000": 2 } },
+      no :{ add:{ "E0000": 1 }, sub:{} } },
+
+    { id:"w_deadline", q:"締切/提出が曖昧で先延ばしが起きてる？",
+      yes:{ add:{ "303": 6, "E300": 1 }, sub:{ "E0000": 2 } },
+      no :{ add:{ "E0000": 1, "E022": 1 }, sub:{} } },
+
+    // --- Urge / impulse ---
+    { id:"u_light", q:"口寂しさ/儀式が欲しい程度の渇望？",
+      yes:{ add:{ "E400": 4 }, sub:{ "E0000": 1 } },
+      no :{ add:{ "E0000": 1 }, sub:{} } },
+
+    { id:"u_strong", q:"渇望が強く、思考が奪われてる？",
+      yes:{ add:{ "E410": 6, "E130": 2 }, sub:{ "E0000": 2 } },
+      no :{ add:{ "E0000": 1 }, sub:{} } },
+
+    // --- Night rule (more granular) ---
+    { id:"n_decide", q:"夜に結論を出したくなってる？",
+      yes:{ add:{ "005": 5, "003": 2, "E320": 2 }, sub:{ "E0000": 2 } },
+      no :{ add:{ "E0000": 1 }, sub:{} } },
+
+    { id:"n_longmsg", q:"夜に長文を送りたくなってる？",
+      yes:{ add:{ "005": 3, "101": 2, "E310": 1 }, sub:{ "E0000": 1 } },
+      no :{ add:{ "E0000": 1 }, sub:{} } },
+  ];
+
   function renderDiag() {
-    const box = byId("diagBox");
-    const res = byId("diagResult");
+    const box = $("diagBox");
+    const res = $("diagResult");
     if (!box || !res) return;
 
     box.innerHTML = "";
     res.innerHTML = "<div class='muted'>開始を押してね。</div>";
 
     let idx = 0;
-    let scores = {};
+
+    // ★E0000 baseline: always present and tends to win when all is fine
+    let scores = { "E0000": 12 };
+
+    // incorporate current overload slider lightly
+    const overloadNow = Number($("overload")?.value ?? 0);
+    if (overloadNow >= 4) addScore(scores, "E0000", -3);
+    if (overloadNow === 0) addScore(scores, "E0000", +2);
 
     const startBtn = document.createElement("button");
     startBtn.textContent = "開始";
@@ -761,22 +926,33 @@
         </div>
       `;
 
-      byId("yesBtn")?.addEventListener("click", () => apply(node.yes));
-      byId("noBtn")?.addEventListener("click", () => apply(node.no));
+      $("yesBtn")?.addEventListener("click", () => apply(node.yes));
+      $("noBtn")?.addEventListener("click", () => apply(node.no));
     }
 
-    function apply(addMap) {
-      for (const [code, pts] of Object.entries(addMap || {})) {
-        scores[code] = (scores[code] || 0) + pts;
-      }
+    function apply(branch) {
+      const addMap = branch?.add || {};
+      const subMap = branch?.sub || {};
+
+      for (const [code, pts] of Object.entries(addMap)) addScore(scores, code, pts);
+      for (const [code, pts] of Object.entries(subMap)) addScore(scores, code, -Math.abs(pts));
+
       idx += 1;
       step();
     }
 
     function finish() {
-      const profile = byId("profile")?.value || "その他";
-      scores = profileBoost(profile, scores);
+      const profile = $("profile")?.value || "その他";
 
+      if (hasRisk(scores)) {
+        scores = profileBoost(profile, scores);
+      } else {
+        // if no risk, reinforce E0000 & good-state breakdown
+        addScore(scores, "E0000", +4);
+        addScore(scores, "E023", +2);
+      }
+
+      clampScores(scores);
       const top = sortTop(scores);
       const critical = hasCritical(top);
 
@@ -787,45 +963,43 @@
           </div>`
         : `<div class="card"><div class="muted">Criticalなし。#1から順に軽く当てていく。</div></div>`;
 
-      const rows = (top || []).map((t, i) => {
-        if (t.code === "OK") {
-          return `
-            <div class="card">
-              <div><strong>#${i + 1} OK（Monitor）</strong></div>
-              <div class="muted" style="margin-top:6px;"><strong>即応：</strong> ${escapeHtml(t.quick)}</div>
-            </div>
-          `;
-        }
-        return `
-          <div class="card">
-            <div><strong>#${i + 1} ${escapeHtml(t.code)} ${escapeHtml(t.name)}</strong>
-              <span class="muted">（${escapeHtml(t.sev)} / score ${escapeHtml(t.score)}）</span>
-            </div>
-            <div class="muted" style="margin-top:6px;"><strong>即応：</strong> ${escapeHtml(t.quick)}</div>
+      const rows = (top || []).map((t, i) => `
+        <div class="card">
+          <div><strong>#${i + 1} ${escapeHtml(t.code)} ${escapeHtml(t.name)}</strong>
+            <span class="muted">（${escapeHtml(t.sev)} / score ${escapeHtml(t.score)}）</span>
           </div>
-        `;
-      }).join("");
+          <div class="muted" style="margin-top:6px;"><strong>即応：</strong> ${escapeHtml(t.quick)}</div>
+        </div>
+      `).join("");
 
-      const codesToApply = (top || []).filter(t => t.code !== "OK").map(t => t.code);
+      // Apply to chips: do NOT apply good-info codes automatically (including E0000)
+      const codesToApply = (top || [])
+        .map(t => t.code)
+        .filter(c => !isGoodInfo(c));
 
       res.innerHTML = `
         ${banner}
         <div class="card">
-          <div><strong>結果：上位3候補</strong> <span class="muted">（プロファイル：${escapeHtml(profile)}）</span></div>
-          <div class="muted" style="margin-top:6px;">複合要因が前提。まず #1 を実施し、必要なら #2/#3 を追加。</div>
+          <div><strong>結果：上位3候補</strong>
+            <span class="muted">（プロファイル：${escapeHtml(profile)} / 質問数：${DIAG_Q.length}）</span>
+          </div>
+          <div class="muted" style="margin-top:6px;">
+            ※E0000が#1なら「特に異常なし」。維持要因だけ1行ログ推奨。<br>
+            ※反映は“問題系コード”のみ（E0000などInfoは除外）。
+          </div>
           <div class="row" style="margin-top:10px;">
             <button id="applyBtn" class="primary" type="button" ${codesToApply.length ? "" : "disabled"}>この結果をERR候補に反映</button>
             <button id="restartBtn" type="button">もう一回</button>
           </div>
-          <div class="muted" style="margin-top:8px;">反映すると「入力」タブのERR候補がこの3つに切り替わる。</div>
         </div>
         ${rows}
       `;
 
-      byId("restartBtn")?.addEventListener("click", renderDiag);
-      byId("applyBtn")?.addEventListener("click", () => {
+      $("restartBtn")?.addEventListener("click", renderDiag);
+
+      $("applyBtn")?.addEventListener("click", () => {
         safe(() => {
-          qs('header nav button[data-tab="log"]')?.click();
+          qs('nav button[data-tab="log"]')?.click();
           setChipsFromCodes(codesToApply);
         });
       });
@@ -848,8 +1022,9 @@
     await safe(async () => { await initAuth(); });
     await safe(async () => { await refreshOwnerOptions(); });
 
-    const activeTabBtn = qs("header nav button.active[data-tab]");
+    const activeTabBtn = qs("nav button.active[data-tab]");
     const activeTab = activeTabBtn?.dataset?.tab;
+
     if (activeTab === "list") await safe(async () => await renderList());
     if (activeTab === "diag") safe(renderDiag);
 
