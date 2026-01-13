@@ -103,38 +103,63 @@
 
     <!-- 設定 -->
     <section id="tab-settings" class="tab">
-      <h2>設定</h2>
-	<p>
-		<a href="./manual/index.html">取扱説明書（完全版）を開く</a>
-	</p>
-<div class="card">
-  <h3>ログイン（メール）</h3>
-  <label>メール
-    <input id="authEmail" type="email" placeholder="you@example.com" />
-  </label>
-  <div class="row" style="margin-top:10px;">
-    <button id="loginBtn" class="primary">ログインリンクを送る</button>
-    <button id="logoutBtn">ログアウト</button>
-  </div>
-  <p id="authMsg" class="muted"></p>
-</div>
+<section id="tab-settings" class="tab">
+  <h2>設定</h2>
 
-<div class="card">
-  <h3>履歴の共有（オーナー専用）</h3>
-  <p class="muted">ここに登録したメールアドレスのユーザーは、あなたの「履歴（メモ含む）」を閲覧できます。</p>
-  <label>閲覧者のメール
-    <input id="viewerEmail" type="email" placeholder="partner@example.com" />
-  </label>
-  <div class="row" style="margin-top:10px;">
-    <button id="addViewerBtn" class="primary">閲覧者を追加</button>
-  </div>
-  <ul id="viewerList" class="list" style="margin-top:10px;"></ul>
-</div>
+  <p>
+    <a href="./manual/index.html">取扱説明書（完全版）を開く</a>
+  </p>
 
-      <button id="wipeBtn" class="danger">全データ削除</button>
-		
-      <p class="muted">端末内保存（iCloud同期なし）。必要ならExportでバックアップ。</p>
-    </section>
+  <hr>
+
+  <h3>共有（ログイン / 閲覧者）</h3>
+
+  <div class="card">
+    <label>ログイン用メール（Magic Link）
+      <input id="authEmail" type="email" placeholder="you@example.com" autocomplete="email">
+    </label>
+
+    <div class="row" style="margin-top:10px;">
+      <button id="loginBtn" class="primary" type="button">ログインリンク送信</button>
+      <button id="logoutBtn" type="button">ログアウト</button>
+    </div>
+
+    <p id="authMsg" class="muted" style="margin-top:8px;"></p>
+  </div>
+
+  <div class="card">
+    <label>履歴の表示対象（クラウド共有がある場合ここに出ます）
+      <select id="ownerSelect"></select>
+    </label>
+    <p class="muted" style="margin-top:8px;">
+      ※「共有：オーナー#1」などが出れば、他人の履歴を閲覧できています（閲覧専用）。
+    </p>
+  </div>
+
+  <div class="card">
+    <h4>閲覧者を追加（あなたの履歴を読める人）</h4>
+    <label>閲覧者メール
+      <input id="viewerEmail" type="email" placeholder="viewer@example.com" autocomplete="email">
+    </label>
+
+    <div class="row" style="margin-top:10px;">
+      <button id="addViewerBtn" class="primary" type="button">追加</button>
+    </div>
+
+    <ul id="viewerList" class="list" style="margin-top:10px;"></ul>
+
+    <p class="muted">
+      ※閲覧者は「ログイン自体」は誰でもできます。<br>
+      でもRLSで、許可された共有ログしか見えません。
+    </p>
+  </div>
+
+  <hr>
+
+  <button id="wipeBtn" class="danger">全データ削除（ローカル）</button>
+  <p class="muted">端末内保存（iCloud同期なし）。必要ならExportでバックアップ。</p>
+</section>
+
   </main>
 
   <script src="app.js"></script>
