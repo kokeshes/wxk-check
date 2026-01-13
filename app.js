@@ -1,5 +1,5 @@
 // =====================
-// WXK Check (Supabase sync + Shared read-only history)
+// WXK Check (Supabase sync + Shared read-only history) - SAFE BUILD
 // =====================
 
 // --- PWA register ---
@@ -12,9 +12,13 @@ const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
 const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
 
 // Create client (requires <script src="https://unpkg.com/@supabase/supabase-js@2"></script>)
-const supabase = (window.supabase && SUPABASE_URL.includes("supabase.co") && SUPABASE_ANON_KEY.startsWith("ey"))
-  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-  : null;
+const supabase =
+  (window.supabase &&
+    typeof window.supabase.createClient === "function" &&
+    SUPABASE_URL.includes("supabase.co") &&
+    SUPABASE_ANON_KEY.startsWith("ey"))
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
 
 // --- Constants ---
 const STORAGE_KEY = "wxk_logs_v1";
@@ -66,22 +70,29 @@ const ERR_CODES = [
   { code: "E710", name: "現実感の低下（ぼんやり／自分が遠い）", sev: "Critical", quick: "五感接地（冷水/香り/足裏）＋誰かの声" },
 ];
 
-const SEVERITY_RANK = { "Critical": 3, "High": 2, "Med": 1, "Info": 0 };
+const SEVERITY_RANK = { Critical: 3, High: 2, Med: 1, Info: 0 };
 
 // =====================
-// DOM helpers
+// DOM helpers (SAFE)
 // =====================
 const $ = (id) => document.getElementById(id);
 
+function safeBind(id, event, handler) {
+  const el = $(id);
+  if (!el) return null;
+  el.addEventListener(event, handler);
+  return el;
+}
+
 function escapeHtml(s) {
   return String(s || "").replace(/[&<>"']/g, (c) => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
   }[c]));
 }
 
 function fmt(ts) {
   const d = new Date(ts);
-  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`;
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
 // =====================
@@ -111,6 +122,7 @@ document.querySelectorAll("nav button").forEach(btn => {
     document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
+
     if (btn.dataset.tab === "list") await renderList();
     if (btn.dataset.tab === "diag") renderDiag();
     if (btn.dataset.tab === "settings") await renderSettings();
@@ -118,29 +130,35 @@ document.querySelectorAll("nav button").forEach(btn => {
 });
 
 // =====================
-// Slider label
+// Slider label (SAFE)
 // =====================
-const overload = $("overload");
-const overloadVal = $("overloadVal");
-overload.addEventListener("input", () => overloadVal.textContent = overload.value);
+safeBind("overload", "input", () => {
+  const overload = $("overload");
+  const overloadVal = $("overloadVal");
+  if (overload && overloadVal) overloadVal.textContent = overload.value;
+});
 
 // =====================
 // ERR chips
 // =====================
-const errChips = $("errChips");
 const selectedErr = new Set();
 const chipButtons = new Map();
 
-ERR_CODES.forEach(e => {
-  const b = document.createElement("button");
-  b.type = "button";
-  b.className = "chip";
-  b.textContent = `${e.code} ${e.name}`;
-  b.dataset.code = e.code;
-  b.addEventListener("click", () => toggleChip(e.code));
-  errChips.appendChild(b);
-  chipButtons.set(e.code, b);
-});
+(function initChips() {
+  const errChips = $("errChips");
+  if (!errChips) return; // ページ差分でも落ちない
+
+  ERR_CODES.forEach(e => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip";
+    b.textContent = `${e.code} ${e.name}`;
+    b.dataset.code = e.code;
+    b.addEventListener("click", () => toggleChip(e.code));
+    errChips.appendChild(b);
+    chipButtons.set(e.code, b);
+  });
+})();
 
 function toggleChip(code, forceState = null) {
   const btn = chipButtons.get(code);
@@ -160,43 +178,8 @@ function setChipsFromCodes(codes) {
 }
 
 // =====================
-// Auth UI
+// Auth UI (SAFE even if elements missing)
 // =====================
-async function initAuth() {
-  if (!supabase) {
-    setAuthMsg("Supabase未設定（SUPABASE_URL / KEY を設定してね）");
-    return;
-  }
-
-  const { data: { session } } = await supabase.auth.getSession();
-  sessionUser = session?.user ? { id: session.user.id, email: session.user.email } : null;
-  updateAuthUI();
-
-  supabase.auth.onAuthStateChange((_event, s) => {
-    sessionUser = s?.user ? { id: s.user.id, email: s.user.email } : null;
-    updateAuthUI();
-    // owner list refresh
-    refreshOwnerOptions().catch(() => {});
-  });
-
-  $("loginBtn")?.addEventListener("click", async () => {
-    const email = ($("authEmail")?.value || "").trim();
-    if (!email) return setAuthMsg("メールを入れてください。");
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: location.href } // magic link return
-    });
-    if (error) return setAuthMsg(`送信失敗：${error.message}`);
-    setAuthMsg("ログインリンクを送信しました。メールを開いてリンクを押してね。");
-  });
-
-  $("logoutBtn")?.addEventListener("click", async () => {
-    await supabase.auth.signOut();
-    setAuthMsg("ログアウトしました。");
-  });
-}
-
 function setAuthMsg(msg) {
   const el = $("authMsg");
   if (el) el.textContent = msg;
@@ -207,28 +190,63 @@ function updateAuthUI() {
   if (emailEl && sessionUser?.email) emailEl.value = sessionUser.email;
 
   if (!supabase) {
-    setAuthMsg("Supabase未設定（SUPABASE_URL / KEY を設定してね）");
+    setAuthMsg("Supabase未設定（SUPABASE_URL / KEY / supabase-js 読み込みを確認）");
     return;
   }
   if (!sessionUser) {
-    setAuthMsg("未ログイン：履歴共有（クラウド）は使えません。診断/入力はローカルで使えます。");
+    setAuthMsg("未ログイン：クラウド共有は無効（ローカルのみ使用中）");
   } else {
     setAuthMsg(`ログイン中：${sessionUser.email}`);
   }
 }
 
+async function initAuth() {
+  // UIが無いページでも落ちない
+  updateAuthUI();
+
+  if (!supabase) return;
+
+  const { data: { session } } = await supabase.auth.getSession();
+  sessionUser = session?.user ? { id: session.user.id, email: session.user.email } : null;
+  updateAuthUI();
+
+  supabase.auth.onAuthStateChange((_event, s) => {
+    sessionUser = s?.user ? { id: s.user.id, email: s.user.email } : null;
+    updateAuthUI();
+    refreshOwnerOptions().catch(() => {});
+  });
+
+  // login button
+  safeBind("loginBtn", "click", async () => {
+    const email = ($("authEmail")?.value || "").trim();
+    if (!email) return setAuthMsg("メールを入れてください。");
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: location.href }
+    });
+    if (error) return setAuthMsg(`送信失敗：${error.message}`);
+    setAuthMsg("ログインリンクを送信しました。メールを開いてリンクを押してね。");
+  });
+
+  // logout
+  safeBind("logoutBtn", "click", async () => {
+    await supabase.auth.signOut();
+    setAuthMsg("ログアウトしました。");
+  });
+}
+
 // =====================
-// Shared history: owner select
+// Shared history: owner select (SAFE)
 // =====================
 async function refreshOwnerOptions() {
   const sel = $("ownerSelect");
-  if (!sel) return;
+  if (!sel) return; // HTMLに無いなら何もしない
 
   ownerOptions = [];
   sel.innerHTML = "";
 
   if (!sessionUser || !supabase) {
-    // local-only
     ownerOptions = [{ owner_id: "local", label: "この端末（ローカル）", isSelf: true }];
     activeOwnerId = "local";
     sel.appendChild(new Option(ownerOptions[0].label, ownerOptions[0].owner_id));
@@ -236,10 +254,8 @@ async function refreshOwnerOptions() {
     return;
   }
 
-  // Self
   ownerOptions.push({ owner_id: sessionUser.id, label: "自分（クラウド）", isSelf: true });
 
-  // Shared owners: fetch from log_viewers where viewer_email == my email (RLS allows)
   const { data: shares, error } = await supabase
     .from("log_viewers")
     .select("owner_id")
@@ -248,14 +264,13 @@ async function refreshOwnerOptions() {
   if (!error && Array.isArray(shares)) {
     const uniq = Array.from(new Set(shares.map(x => x.owner_id).filter(Boolean)));
     uniq.forEach((oid, i) => {
-      if (oid !== sessionUser.id) ownerOptions.push({ owner_id: oid, label: `共有：オーナー#${i+1}`, isSelf: false });
+      if (oid !== sessionUser.id) ownerOptions.push({ owner_id: oid, label: `共有：オーナー#${i + 1}`, isSelf: false });
     });
   }
 
   ownerOptions.forEach(o => sel.appendChild(new Option(o.label, o.owner_id)));
   sel.disabled = ownerOptions.length <= 1;
 
-  // pick current or default to self
   if (!activeOwnerId || !ownerOptions.some(o => o.owner_id === activeOwnerId)) {
     activeOwnerId = sessionUser.id;
   }
@@ -268,32 +283,32 @@ async function refreshOwnerOptions() {
 }
 
 // =====================
-// Save entry
+// Save entry (SAFE)
 // =====================
-$("saveBtn").addEventListener("click", async () => {
+safeBind("saveBtn", "click", async () => {
   const entry = {
     id: crypto.randomUUID(),
     ts: new Date().toISOString(),
-    profile: $("profile").value,
-    overload: Number($("overload").value),
+    profile: $("profile")?.value || "その他",
+    overload: Number($("overload")?.value || 0),
     err: Array.from(selectedErr),
-    note: ($("note").value || "").trim(),
+    note: ($("note")?.value || "").trim(),
     actions: {
-      distance: $("actDistance").checked,
-      scope: $("actScope").checked,
-      body: $("actBody").checked,
-      stop: $("actStop").checked
+      distance: !!$("actDistance")?.checked,
+      scope: !!$("actScope")?.checked,
+      body: !!$("actBody")?.checked,
+      stop: !!$("actStop")?.checked
     },
-    boundaryTpl: $("boundaryTpl").value,
-    boundaryNote: ($("boundaryNote").value || "").trim()
+    boundaryTpl: $("boundaryTpl")?.value || "",
+    boundaryNote: ($("boundaryNote")?.value || "").trim()
   };
 
-  // Always keep local (offline safety)
+  // Always keep local
   const logsLocal = loadLogsLocal();
   logsLocal.unshift(entry);
   saveLogsLocal(logsLocal);
 
-  // If logged in, also sync to Supabase
+  // Cloud sync (optional)
   if (supabase && sessionUser) {
     const payload = {
       owner_id: sessionUser.id,
@@ -308,32 +323,34 @@ $("saveBtn").addEventListener("click", async () => {
     };
     const { error } = await supabase.from("logs").insert(payload);
     if (error) {
-      $("saveMsg").textContent = `ローカル保存OK / クラウド同期失敗：${error.message}`;
-      setTimeout(() => ($("saveMsg").textContent = ""), 2200);
+      const saveMsg = $("saveMsg");
+      if (saveMsg) {
+        saveMsg.textContent = `ローカル保存OK / クラウド同期失敗：${error.message}`;
+        setTimeout(() => (saveMsg.textContent = ""), 2200);
+      }
       return;
     }
   }
 
-  $("saveMsg").textContent = "保存しました。";
-  setTimeout(() => ($("saveMsg").textContent = ""), 1200);
+  const saveMsg = $("saveMsg");
+  if (saveMsg) {
+    saveMsg.textContent = "保存しました。";
+    setTimeout(() => (saveMsg.textContent = ""), 1200);
+  }
 });
 
 // =====================
-// List render (history)
-// - If activeOwnerId == "local": show local only
-// - Else: fetch from Supabase logs where owner_id == activeOwnerId
-//   * if viewing someone else => NO delete
+// List render (SAFE)
 // =====================
 async function renderList() {
   const ul = $("logList");
   if (!ul) return;
   ul.innerHTML = "";
 
-  // Ensure owner selector is ready
-  await refreshOwnerOptions();
+  await refreshOwnerOptions().catch(() => {});
 
   // LOCAL MODE
-  if (!sessionUser || !supabase || activeOwnerId === "local") {
+  if (!sessionUser || !supabase || activeOwnerId === "local" || !activeOwnerId) {
     const logs = loadLogsLocal();
     logs.forEach(ent => {
       const li = document.createElement("li");
@@ -382,7 +399,6 @@ async function renderList() {
 
     if (viewingSelf) {
       li.querySelector("[data-del]")?.addEventListener("click", async () => {
-        // delete in cloud
         const { error: delErr } = await supabase.from("logs").delete().eq("id", row.id);
         if (delErr) alert(`削除失敗：${delErr.message}`);
         await renderList();
@@ -394,21 +410,19 @@ async function renderList() {
 }
 
 // =====================
-// Export / Import (LOCAL ONLY)
-// - shared/cloud data export is not implemented here on purpose
-//   (because viewers should not export owner's full logs by default)
+// Export / Import (LOCAL ONLY) - SAFE
 // =====================
-$("exportBtn").addEventListener("click", () => {
+safeBind("exportBtn", "click", () => {
   const blob = new Blob([JSON.stringify(loadLogsLocal(), null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `wxk_logs_local_${new Date().toISOString().slice(0,10)}.json`;
+  a.download = `wxk_logs_local_${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
 });
 
-$("importFile").addEventListener("change", async (e) => {
+safeBind("importFile", "change", async (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
   const text = await f.text();
@@ -426,7 +440,7 @@ $("importFile").addEventListener("change", async (e) => {
 });
 
 // --- Wipe (LOCAL ONLY) ---
-$("wipeBtn").addEventListener("click", () => {
+safeBind("wipeBtn", "click", () => {
   if (confirm("ローカルデータを削除します。よろしいですか？（クラウドは消えません）")) {
     localStorage.removeItem(STORAGE_KEY);
     alert("削除しました。");
@@ -434,23 +448,32 @@ $("wipeBtn").addEventListener("click", () => {
 });
 
 // =====================
-// Owner-only: manage viewers (share history)
+// Owner-only: manage viewers (share history) - SAFE
 // =====================
 async function renderSettings() {
-  // Render viewer list if possible
-  if (!supabase || !sessionUser) {
-    $("viewerList").innerHTML = "";
+  // HTMLにUIが無ければ何もしない
+  if (!$("viewerList") && !$("viewerEmail") && !$("addViewerBtn") && !$("ownerSelect") && !$("authEmail")) {
     return;
   }
 
-  $("addViewerBtn")?.addEventListener("click", async () => {
-    const vEmail = ($("viewerEmail")?.value || "").trim().toLowerCase();
-    if (!vEmail) return alert("閲覧者メールを入れてください。");
-    const { error } = await supabase.from("log_viewers").insert({ owner_id: sessionUser.id, viewer_email: vEmail });
-    if (error) return alert(`追加失敗：${error.message}`);
-    $("viewerEmail").value = "";
-    await renderViewerList();
-  });
+  if (!supabase || !sessionUser) {
+    const ul = $("viewerList");
+    if (ul) ul.innerHTML = "";
+    return;
+  }
+
+  // 二重バインド防止：毎回onclickで上書き
+  const addBtn = $("addViewerBtn");
+  if (addBtn) {
+    addBtn.onclick = async () => {
+      const vEmail = ($("viewerEmail")?.value || "").trim().toLowerCase();
+      if (!vEmail) return alert("閲覧者メールを入れてください。");
+      const { error } = await supabase.from("log_viewers").insert({ owner_id: sessionUser.id, viewer_email: vEmail });
+      if (error) return alert(`追加失敗：${error.message}`);
+      if ($("viewerEmail")) $("viewerEmail").value = "";
+      await renderViewerList();
+    };
+  }
 
   await renderViewerList();
 }
@@ -482,12 +505,11 @@ async function renderViewerList() {
       </div>
     `;
     li.querySelector("[data-rm]")?.addEventListener("click", async () => {
-      const email = v.viewer_email;
       const { error: delErr } = await supabase
         .from("log_viewers")
         .delete()
         .eq("owner_id", sessionUser.id)
-        .eq("viewer_email", email);
+        .eq("viewer_email", v.viewer_email);
       if (delErr) alert(`削除失敗：${delErr.message}`);
       await renderViewerList();
       await refreshOwnerOptions();
@@ -497,36 +519,30 @@ async function renderViewerList() {
 }
 
 // =====================
-// Diagnosis (your current expanded question set)
+// Diagnosis
 // =====================
 const DIAG_Q = [
-  // --- Safety first ---
   { id:"crisis1", q:"今、危険（自己破壊衝動/安全が揺らぐ/一人がまずい）？", yes:{ "E700": 8, "E710": 4 }, no:{} },
   { id:"dereal", q:"現実感が薄い／自分が遠い感じがある？", yes:{ "E710": 7, "E700": 2 }, no:{} },
 
-  // --- Body / life base ---
   { id:"sleep", q:"睡眠が足りない（6h未満/質が悪い）？", yes:{ "E100": 4, "E320": 1, "E330": 1, "005": 1 }, no:{} },
   { id:"food", q:"空腹・食事抜き・糖が足りない感じ？", yes:{ "E110": 4, "E310": 1, "E300": 1 }, no:{} },
   { id:"water", q:"水分不足っぽい（口渇/頭痛/めまい/暖房/運動後）？", yes:{ "E120": 4, "E320": 1, "E330": 1 }, no:{} },
   { id:"overloadBody", q:"疲労が溜まり、体力と情緒が同時に落ちてる？", yes:{ "E130": 5, "001": 2, "004": 1 }, no:{} },
 
-  // --- People / boundary ---
   { id:"boundaryThin", q:"優しくしすぎて抱え込みモードになってる？", yes:{ "E200": 4, "104": 2, "004": 1 }, no:{} },
   { id:"freeze", q:"侵害刺激（嫌な言葉/圧/ハラスメント）で固まる・反芻が出てる？", yes:{ "E210": 6, "002": 3, "203": 2 }, no:{} },
   { id:"dangerApproach", q:"相手の踏み込みが増えて“引き込まれそう”？（密室化/頻度増/曖昧許容）", yes:{ "E220": 7, "202": 3, "201": 2 }, no:{} },
   { id:"test", q:"相手が試し行為（嫉妬/沈黙/既読無視/揺さぶり）をしてる？", yes:{ "203": 6, "202": 3, "E220": 2 }, no:{ "102": 2 } },
 
-  // --- Cognition / mood ---
   { id:"anx", q:"最悪想定が止まらない？", yes:{ "E320": 5, "005": 1, "003": 1 }, no:{} },
   { id:"selfhate", q:"自己否定（恥/罪悪感/罵倒）ループに入ってる？", yes:{ "E330": 5, "004": 1 }, no:{} },
   { id:"anger", q:"怒りの熱で言葉が強くなりそう？（即返信したい）", yes:{ "E310": 4, "102": 1 }, no:{} },
   { id:"rush", q:"焦ってタスクが空回りしてる？（手が散る/全部重い）", yes:{ "E300": 4, "303": 1 }, no:{} },
 
-  // --- Work / research ---
   { id:"hyperfocus", q:"時間感覚が飛ぶ没入が出てる？（補給忘れ）", yes:{ "E500": 4, "E010": 1 }, no:{} },
   { id:"ruminateWork", q:"同じ文/同じ考えを焼き続けて進まない？", yes:{ "E510": 5, "003": 1, "005": 1 }, no:{} },
 
-  // --- The ones you cared about: 301 / 003 are matched by questions below ---
   { id:"interdiscipline", q:"今、論点が複数領域にまたがりすぎて『翻訳』だけで時間が溶けてる？", yes:{ "301": 5, "E510": 1, "E300": 1 }, no:{} },
   { id:"premiseMissing", q:"結論より先に前提・定義・用語の整備で止まってる？（前進感がない）", yes:{ "301": 4, "E510": 2 }, no:{} },
 
@@ -535,11 +551,9 @@ const DIAG_Q = [
   { id:"responsibility", q:"責任の所在は明確？（誰が決める？）", yes:{}, no:{ "003": 4, "001": 1 } },
   { id:"decisionOwner", q:"『誰が決める？』が曖昧なまま、こちらが埋め合わせて決めてない？", yes:{ "003": 4, "104": 1 }, no:{} },
 
-  // --- Urge / craving ---
   { id:"urgeLight", q:"口寂しさ/儀式が欲しい程度の渇望がある？", yes:{ "E400": 3 }, no:{} },
   { id:"urgeStrong", q:"渇望が強く、思考が奪われてる？", yes:{ "E410": 5, "E130": 1 }, no:{} },
 
-  // --- Night rule ---
   { id:"night", q:"夜に結論を出したくなってる？", yes:{ "005": 4, "003": 1, "E320": 1 }, no:{} }
 ];
 
@@ -558,7 +572,6 @@ function profileBoost(profile, scores) {
       scores["E200"] = (scores["E200"] || 0) + 1;
       scores["E220"] = (scores["E220"] || 0) + 1;
       break;
-
     case "仕事/研究":
       scores["003"] = (scores["003"] || 0) + 1;
       scores["301"] = (scores["301"] || 0) + 1;
@@ -567,7 +580,6 @@ function profileBoost(profile, scores) {
       scores["E510"] = (scores["E510"] || 0) + 1;
       scores["E500"] = (scores["E500"] || 0) + 1;
       break;
-
     case "相談/友人":
       scores["004"] = (scores["004"] || 0) + 1;
       scores["104"] = (scores["104"] || 0) + 1;
@@ -576,14 +588,12 @@ function profileBoost(profile, scores) {
       scores["E210"] = (scores["E210"] || 0) + 1;
       scores["E330"] = (scores["E330"] || 0) + 1;
       break;
-
     case "単独":
       scores["005"] = (scores["005"] || 0) + 1;
       scores["E320"] = (scores["E320"] || 0) + 1;
       scores["E330"] = (scores["E330"] || 0) + 1;
       scores["E011"] = (scores["E011"] || 0) + 1;
       break;
-
     default:
       scores["E300"] = (scores["E300"] || 0) + 1;
       scores["004"]  = (scores["004"]  || 0) + 1;
@@ -594,7 +604,7 @@ function profileBoost(profile, scores) {
 
 function sortTop(scores) {
   const arr = Object.entries(scores)
-    .filter(([,v]) => v > 0)
+    .filter(([, v]) => v > 0)
     .map(([code, score]) => {
       const meta = getErrMeta(code);
       return {
@@ -626,6 +636,8 @@ function hasCritical(top) {
 function renderDiag() {
   const box = $("diagBox");
   const res = $("diagResult");
+  if (!box || !res) return;
+
   box.innerHTML = "";
   res.innerHTML = "<div class='muted'>開始を押してね。</div>";
 
@@ -649,12 +661,12 @@ function renderDiag() {
           <button id="yesBtn" class="primary">YES</button>
           <button id="noBtn">NO</button>
         </div>
-        <div class="muted" style="margin-top:8px;">${idx+1} / ${DIAG_Q.length}</div>
+        <div class="muted" style="margin-top:8px;">${idx + 1} / ${DIAG_Q.length}</div>
       </div>
     `;
 
-    $("yesBtn").addEventListener("click", () => apply(node.yes));
-    $("noBtn").addEventListener("click", () => apply(node.no));
+    safeBind("yesBtn", "click", () => apply(node.yes));
+    safeBind("noBtn", "click", () => apply(node.no));
   }
 
   function apply(addMap) {
@@ -679,24 +691,14 @@ function renderDiag() {
          </div>`
       : `<div class="card"><div class="muted">Criticalなし。#1から順に軽く当てていく。</div></div>`;
 
-    const rows = top.map((t, i) => {
-      if (t.code === "OK") {
-        return `
-          <div class="card">
-            <div><strong>#${i+1} OK（Monitor）</strong></div>
-            <div class="muted" style="margin-top:6px;"><strong>即応：</strong> ${escapeHtml(t.quick)}</div>
-          </div>
-        `;
-      }
-      return `
-        <div class="card">
-          <div><strong>#${i+1} ${t.code} ${escapeHtml(t.name)}</strong>
-            <span class="muted">（${escapeHtml(t.sev)} / score ${t.score}）</span>
-          </div>
-          <div class="muted" style="margin-top:6px;"><strong>即応：</strong> ${escapeHtml(t.quick)}</div>
+    const rows = top.map((t, i) => `
+      <div class="card">
+        <div><strong>#${i + 1} ${escapeHtml(t.code)} ${escapeHtml(t.name)}</strong>
+          <span class="muted">（${escapeHtml(t.sev)} / score ${t.score}）</span>
         </div>
-      `;
-    }).join("");
+        <div class="muted" style="margin-top:6px;"><strong>即応：</strong> ${escapeHtml(t.quick)}</div>
+      </div>
+    `).join("");
 
     const codesToApply = top.filter(t => t.code !== "OK").map(t => t.code);
 
@@ -711,15 +713,14 @@ function renderDiag() {
           <button id="applyBtn" class="primary" ${codesToApply.length ? "" : "disabled"}>この結果をERR候補に反映</button>
           <button id="restartBtn">もう一回</button>
         </div>
-        <div class="muted" style="margin-top:8px;">反映すると「入力」タブのERR候補がこの3つに切り替わる。</div>
       </div>
       ${rows}
     `;
 
-    $("restartBtn").addEventListener("click", renderDiag);
+    safeBind("restartBtn", "click", renderDiag);
 
-    $("applyBtn")?.addEventListener("click", () => {
-      document.querySelector('nav button[data-tab="log"]').click();
+    safeBind("applyBtn", "click", () => {
+      document.querySelector('nav button[data-tab="log"]')?.click();
       setChipsFromCodes(codesToApply);
     });
 
@@ -731,6 +732,6 @@ function renderDiag() {
 // Boot
 // =====================
 (async function boot() {
-  await initAuth();
-  await refreshOwnerOptions();
+  await initAuth().catch(() => {});
+  await refreshOwnerOptions().catch(() => {});
 })();
