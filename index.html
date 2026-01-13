@@ -7,17 +7,21 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="styles.css" />
   <title>WXK Check</title>
+
+  <!-- Supabase (CDN) -> app.js より先に読み込む -->
+  <script defer src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <!-- あなたのアプリ本体：DOM構築後に動かす -->
+  <script defer src="app.js"></script>
 </head>
-	<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script src="app.js"></script>
+
 <body>
   <header>
     <h1>WXK Check</h1>
     <nav>
-      <button data-tab="log" class="active">入力</button>
-      <button data-tab="list">履歴</button>
-      <button data-tab="diag">診断</button>
-      <button data-tab="settings">設定</button>
+      <button data-tab="log" class="active" type="button">入力</button>
+      <button data-tab="list" type="button">履歴</button>
+      <button data-tab="diag" type="button">診断</button>
+      <button data-tab="settings" type="button">設定</button>
     </nav>
   </header>
 
@@ -72,25 +76,28 @@
         <input id="boundaryNote" type="text" placeholder="例：週1で相談、30分まで など" />
       </label>
 
-      <button id="saveBtn" class="primary">保存</button>
+      <button id="saveBtn" class="primary" type="button">保存</button>
       <p id="saveMsg" class="muted"></p>
     </section>
 
     <!-- 履歴 -->
     <section id="tab-list" class="tab">
       <h2>履歴</h2>
-		<div class="row" style="margin-bottom:10px;">
-  <label>表示対象
-    <select id="ownerSelect"></select>
-  </label>
-</div>
+
+      <div class="row" style="margin-bottom:10px;">
+        <label>表示対象
+          <select id="ownerSelect"></select>
+        </label>
+      </div>
+
       <div class="row">
-        <button id="exportBtn">エクスポート（JSON）</button>
+        <button id="exportBtn" type="button">エクスポート（JSON）</button>
         <label class="file">
           インポート
           <input id="importFile" type="file" accept="application/json" />
         </label>
       </div>
+
       <ul id="logList" class="list"></ul>
     </section>
 
@@ -103,65 +110,50 @@
 
     <!-- 設定 -->
     <section id="tab-settings" class="tab">
-<section id="tab-settings" class="tab">
-  <h2>設定</h2>
+      <h2>設定</h2>
 
-  <p>
-    <a href="./manual/index.html">取扱説明書（完全版）を開く</a>
-  </p>
+      <p><a href="./manual/index.html">取扱説明書（完全版）を開く</a></p>
 
-  <hr>
+      <hr>
 
-  <h3>共有（ログイン / 閲覧者）</h3>
+      <h3>共有（ログイン / 閲覧者）</h3>
 
-  <div class="card">
-    <label>ログイン用メール（Magic Link）
-      <input id="authEmail" type="email" placeholder="you@example.com" autocomplete="email">
-    </label>
+      <div class="card">
+        <label>ログイン用メール（Magic Link）
+          <input id="authEmail" type="email" placeholder="you@example.com" autocomplete="email">
+        </label>
 
-    <div class="row" style="margin-top:10px;">
-      <button id="loginBtn" class="primary" type="button">ログインリンク送信</button>
-      <button id="logoutBtn" type="button">ログアウト</button>
-    </div>
+        <div class="row" style="margin-top:10px;">
+          <button id="loginBtn" class="primary" type="button">ログインリンク送信</button>
+          <button id="logoutBtn" type="button">ログアウト</button>
+        </div>
 
-    <p id="authMsg" class="muted" style="margin-top:8px;"></p>
-  </div>
+        <p id="authMsg" class="muted" style="margin-top:8px;"></p>
+      </div>
 
-  <div class="card">
-    <label>履歴の表示対象（クラウド共有がある場合ここに出ます）
-      <select id="ownerSelect"></select>
-    </label>
-    <p class="muted" style="margin-top:8px;">
-      ※「共有：オーナー#1」などが出れば、他人の履歴を閲覧できています（閲覧専用）。
-    </p>
-  </div>
+      <div class="card">
+        <h4>閲覧者を追加（あなたの履歴を読める人）</h4>
+        <label>閲覧者メール
+          <input id="viewerEmail" type="email" placeholder="viewer@example.com" autocomplete="email">
+        </label>
 
-  <div class="card">
-    <h4>閲覧者を追加（あなたの履歴を読める人）</h4>
-    <label>閲覧者メール
-      <input id="viewerEmail" type="email" placeholder="viewer@example.com" autocomplete="email">
-    </label>
+        <div class="row" style="margin-top:10px;">
+          <button id="addViewerBtn" class="primary" type="button">追加</button>
+        </div>
 
-    <div class="row" style="margin-top:10px;">
-      <button id="addViewerBtn" class="primary" type="button">追加</button>
-    </div>
+        <ul id="viewerList" class="list" style="margin-top:10px;"></ul>
 
-    <ul id="viewerList" class="list" style="margin-top:10px;"></ul>
+        <p class="muted">
+          ※閲覧者は「ログイン自体」は誰でもできます。<br>
+          でもRLSで、許可された共有ログしか見えません。
+        </p>
+      </div>
 
-    <p class="muted">
-      ※閲覧者は「ログイン自体」は誰でもできます。<br>
-      でもRLSで、許可された共有ログしか見えません。
-    </p>
-  </div>
+      <hr>
 
-  <hr>
-
-  <button id="wipeBtn" class="danger">全データ削除（ローカル）</button>
-  <p class="muted">端末内保存（iCloud同期なし）。必要ならExportでバックアップ。</p>
-</section>
-
+      <button id="wipeBtn" class="danger" type="button">全データ削除（ローカル）</button>
+      <p class="muted">端末内保存（iCloud同期なし）。必要ならExportでバックアップ。</p>
+    </section>
   </main>
-
-  <script src="app.js"></script>
 </body>
 </html>
