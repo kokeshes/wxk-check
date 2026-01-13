@@ -7,11 +7,6 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="styles.css" />
   <title>WXK Check</title>
-
-  <!-- Supabase (CDN) -> app.js より先に読み込む -->
-  <script defer src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <!-- あなたのアプリ本体：DOM構築後に動かす -->
-  <script defer src="app.js"></script>
 </head>
 
 <body>
@@ -155,5 +150,9 @@
       <p class="muted">端末内保存（iCloud同期なし）。必要ならExportでバックアップ。</p>
     </section>
   </main>
+
+  <!-- ✅ JSは必ず最後・deferで1回だけ -->
+  <script defer src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script defer src="app.js"></script>
 </body>
 </html>
