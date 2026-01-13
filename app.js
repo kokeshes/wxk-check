@@ -10,7 +10,7 @@
   // ---------------------
   // Basic helpers
   // ---------------------
-  const $ = (id) => document.getElementById(id);
+  const $id = (id) => document.getElementById(id);
   const qs = (sel, root = document) => root.querySelector(sel);
   const qsa = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
@@ -27,61 +27,22 @@
   function fmt(ts) {
     const d = new Date(ts);
     if (Number.isNaN(d.getTime())) return String(ts);
-    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   }
 
   function setText(id, text) {
-    const el = $(id);
+    const el = $id(id);
     if (el) el.textContent = text;
   }
 
   function setHtml(id, html) {
-    const el = $(id);
+    const el = $id(id);
     if (el) el.innerHTML = html;
   }
 
-  // ---------------------
-  // PWA register
-  // ---------------------
-  safe(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./sw.js").catch(() => {});
-    }
-  });
-
-  // ---------------------
-  // Supabase config (SET YOUR VALUES)
-  // ---------------------
-  // If you don't want cloud sync, leave as-is. App will run local-only.
-  const SUPABASE_URL = "https://nghnvqolxlzblwncpfgw.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_eMbDDZzJfNIheEzK04rsRw_oXMoc7fh";
-
- // localStorage keys
-  const LS_ROOM_ID = "wxk_room_id";
-  const LS_ROOM_CODE = "wxk_room_code";
-
-  // Supabase client
-  const supabase = window.supabase?.createClient?.(SUPABASE_URL, SUPABASE_ANON_KEY);
-  if (!supabase) {
-    console.error("Supabase SDKが読み込まれていません。index.htmlの<script>順序を確認してね。");
-    return;
-  }
-
-  // DOM helpers
-  const $ = (sel, root = document) => root.querySelector(sel);
-  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-
-  const escapeHtml = (s) =>
-    String(s ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#39;");
-
   function toast(msg) {
-    // 既存UIが無い前提でも出るように簡易トースト
-    let el = $("#wxk-toast");
+    // UIが無くても出せる簡易トースト
+    let el = $id("wxk-toast");
     if (!el) {
       el = document.createElement("div");
       el.id = "wxk-toast";
@@ -108,521 +69,26 @@
     toast._t = setTimeout(() => (el.style.display = "none"), 2400);
   }
 
-  function ensureRoomUi() {
-    // 既存HTMLにUIが無い場合でも動くように、ログタブ上に「共有」UIを自動挿入
-    const logPanel =
-      $('[data-tab-panel="log"]') ||
-      $("#tab-log") ||
-      $(".tab-panel.log") ||
-      $("main") ||
-      document.body;
-
-    // すでにあるなら何もしない
-    if ($("#wxk-room-box")) return;
-
-    const wrap = document.createElement("section");
-    wrap.id = "wxk-room-box";
-    wrap.style.border = "1px solid rgba(255,255,255,.12)";
-    wrap.style.borderRadius = "16px";
-    wrap.style.padding = "12px";
-    wrap.style.margin = "10px 0 14px";
-    wrap.style.background = "rgba(255,255,255,.03)";
-
-    wrap.innerHTML = `
-      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-        <button id="btn-create-room" type="button" style="padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:inherit; cursor:pointer;">
-          共有ルーム作成
-        </button>
-
-        <div style="display:flex; gap:8px; align-items:center; flex:1; min-width:220px;">
-          <input id="join-code" inputmode="text" autocomplete="one-time-code" placeholder="参加コード（例: ABC123）"
-            style="flex:1; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.18); color:inherit;">
-          <button id="btn-join-room" type="button" style="padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:inherit; cursor:pointer;">
-            参加
-          </button>
-        </div>
-      </div>
-
-      <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-        <div style="font-size:13px; opacity:.85;">
-          現在のルーム: <span id="room-status" style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">(未接続)</span>
-        </div>
-
-        <button id="btn-copy-link" type="button" style="padding:8px 10px; border-radius:12px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:inherit; cursor:pointer;">
-          共有リンクコピー
-        </button>
-
-        <button id="btn-leave-room" type="button" style="padding:8px 10px; border-radius:12px; border:1px solid rgba(255,80,110,.35); background:rgba(255,80,110,.10); color:inherit; cursor:pointer;">
-          ルーム切替（解除）
-        </button>
-      </div>
-
-      <div id="room-hint" style="margin-top:8px; font-size:12px; opacity:.75; line-height:1.4;">
-        「共有ルーム作成」で出たコードをURLに埋めて相手に送ると、同じ履歴を共同編集できます。
-      </div>
-    `;
-
-    // なるべく上に挿入
-    logPanel.prepend(wrap);
-  }
-
-  function getRoomStatusEl() {
-    return $("#room-status");
-  }
-
-  function setRoomStatus(text) {
-    const el = getRoomStatusEl();
-    if (el) el.textContent = text;
-  }
-
-  function parseUrlCode() {
-    const u = new URL(location.href);
-    const code = (u.searchParams.get("code") || "").trim();
-    return code ? code.toUpperCase() : "";
-  }
-
-  function setUrlCode(code) {
-    const u = new URL(location.href);
-    if (code) u.searchParams.set("code", code);
-    else u.searchParams.delete("code");
-    history.replaceState({}, "", u.toString());
-  }
-
-  async function ensureAnonAuth() {
-    const { data } = await supabase.auth.getUser();
-    if (data?.user) return data.user;
-
-    const res = await supabase.auth.signInAnonymously();
-    if (res.error) throw res.error;
-
-    const again = await supabase.auth.getUser();
-    if (!again.data?.user) throw new Error("匿名ログインに失敗しました。");
-    return again.data.user;
-  }
-
-  async function rpcCreateRoom() {
-    const { data, error } = await supabase.rpc("create_room");
-    if (error) throw error;
-
-    // data は [{ room_id, code }] 形式のことが多い
-    const row = Array.isArray(data) ? data[0] : data;
-    if (!row?.room_id || !row?.code) throw new Error("create_room の戻り値が想定と違います。");
-    return { room_id: row.room_id, code: row.code };
-  }
-
-  async function rpcJoinRoom(code) {
-    const { data, error } = await supabase.rpc("join_room", { p_code: code });
-    if (error) throw error;
-    // data は room_id
-    if (!data) throw new Error("join_room の戻り値が空です。");
-    return data;
-  }
-
-  function saveRoomLocal(room_id, code) {
-    if (room_id) localStorage.setItem(LS_ROOM_ID, room_id);
-    if (code) localStorage.setItem(LS_ROOM_CODE, code);
-  }
-
-  function clearRoomLocal() {
-    localStorage.removeItem(LS_ROOM_ID);
-    localStorage.removeItem(LS_ROOM_CODE);
-  }
-
-  function loadRoomLocal() {
-    return {
-      room_id: localStorage.getItem(LS_ROOM_ID) || "",
-      code: localStorage.getItem(LS_ROOM_CODE) || "",
-    };
-  }
-
-  function buildShareLink(code) {
-    const u = new URL(location.href);
-    u.searchParams.set("code", code);
-    return u.toString();
-  }
-
-  function getLogPanelRoot() {
-    return $('[data-tab-panel="log"]') || document;
-  }
-
-  function getListPanelRoot() {
-    return $('[data-tab-panel="list"]') || document;
-  }
-
-  function serializeAllInputs(root) {
-    // root内の input/select/textarea を全部拾って JSON化
-    // name or id をキーにする。無い場合も拾う（自動採番）
-    const fields = root.querySelectorAll("input, select, textarea");
-    const payload = {};
-    let anonIdx = 0;
-
-    fields.forEach((el) => {
-      const tag = el.tagName.toLowerCase();
-      const type = (el.getAttribute("type") || "").toLowerCase();
-      const key = el.name || el.id || `__field_${anonIdx++}`;
-
-      if (tag === "input" && (type === "checkbox" || type === "radio")) {
-        if (type === "radio") {
-          if (el.checked) payload[key] = el.value;
-          else if (!(key in payload)) payload[key] = payload[key] ?? null; // 未選択を明示
-        } else {
-          payload[key] = el.checked;
-        }
-        return;
-      }
-
-      // file input は保存しない（参照のみ）
-      if (tag === "input" && type === "file") {
-        payload[key] = "[file]";
-        return;
-      }
-
-      payload[key] = el.value;
-    });
-
-    return payload;
-  }
-
-  function pickPrimaryText(payload) {
-    // ざっくり「本文っぽいもの」を探す（履歴一覧で見やすくする）
-    const candidates = ["text", "memo", "note", "input", "body", "message", "content"];
-    for (const k of candidates) {
-      if (payload[k] && String(payload[k]).trim()) return String(payload[k]).trim();
+  // ---------------------
+  // PWA register
+  // ---------------------
+  safe(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js").catch(() => {});
     }
-    // textarea優先で拾う
-    for (const [k, v] of Object.entries(payload)) {
-      if (typeof v === "string" && v.length > 0 && k.toLowerCase().includes("text")) return v.trim();
-    }
-    // 最後の手段：最長文字列
-    let best = "";
-    for (const v of Object.values(payload)) {
-      if (typeof v === "string" && v.trim().length > best.length) best = v.trim();
-    }
-    return best;
-  }
-
-  function pickPrimaryResult(payload) {
-    const candidates = ["result", "judge", "status", "code", "error", "type"];
-    for (const k of candidates) {
-      if (payload[k] && String(payload[k]).trim()) return String(payload[k]).trim();
-    }
-    return null;
-  }
-
-  async function insertLog(room_id) {
-    const user = await ensureAnonAuth();
-    const root = getLogPanelRoot();
-
-    const payload = serializeAllInputs(root);
-    const text = pickPrimaryText(payload) || "(no text)";
-    const result = pickPrimaryResult(payload);
-
-    const { error } = await supabase.from("logs").insert({
-      room_id,
-      user_id: user.id,
-      text,
-      result,
-      payload, // jsonb
-    });
-
-    if (error) throw error;
-  }
-
-  function findSaveButton() {
-    // 既存UIの「保存」「登録」ボタンっぽいのを雑に探す
-    const candidates = [
-      "#btn-save",
-      "#save",
-      '[data-action="save"]',
-      'button[type="submit"]',
-      "button",
-    ];
-
-    for (const sel of candidates) {
-      const els = $$(sel);
-      // 文字に "保存" / "登録" / "追加" / "記録" が含まれるもの優先
-      const hit = els.find((b) => /保存|登録|追加|記録|送信|submit/i.test((b.textContent || "").trim()));
-      if (hit) return hit;
-    }
-    return null;
-  }
-
-  function getHistoryContainer() {
-    // 履歴一覧を差し込む場所
-    return (
-      $("#history") ||
-      $("#log-list") ||
-      $('[data-role="history"]') ||
-      $("#list") ||
-      getListPanelRoot()
-    );
-  }
-
-  function renderLogs(rows) {
-    const box = getHistoryContainer();
-    if (!box) return;
-
-    // box が panel 全体だったら汚さないよう専用要素を作る
-    let target = $("#wxk-history");
-    if (!target) {
-      target = document.createElement("div");
-      target.id = "wxk-history";
-      target.style.display = "grid";
-      target.style.gap = "10px";
-      box.innerHTML = ""; // 履歴として使う前提でクリア
-      box.appendChild(target);
-    } else {
-      target.innerHTML = "";
-    }
-
-    if (!rows.length) {
-      target.innerHTML = `<div style="opacity:.75; font-size:13px;">履歴がまだありません。</div>`;
-      return;
-    }
-
-    rows.forEach((r) => {
-      const card = document.createElement("article");
-      card.style.border = "1px solid rgba(255,255,255,.12)";
-      card.style.borderRadius = "16px";
-      card.style.padding = "12px";
-      card.style.background = "rgba(255,255,255,.03)";
-
-      const created = r.created_at ? new Date(r.created_at) : null;
-      const when = created ? created.toLocaleString() : "";
-
-      const body = escapeHtml(r.text || "");
-      const result = escapeHtml(r.result || "");
-      const meta = escapeHtml(when);
-
-      // payloadを折りたたみ表示
-      const payloadStr = r.payload ? escapeHtml(JSON.stringify(r.payload, null, 2)) : "";
-
-      card.innerHTML = `
-        <div style="display:flex; gap:10px; align-items:flex-start; justify-content:space-between;">
-          <div style="flex:1; min-width:0;">
-            <div style="font-size:12px; opacity:.7; margin-bottom:6px;">${meta}</div>
-            <div style="font-size:14px; line-height:1.45; white-space:pre-wrap; word-break:break-word;">${body}</div>
-            ${result ? `<div style="margin-top:8px; font-size:12px; opacity:.85;">Result: <span style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">${result}</span></div>` : ""}
-          </div>
-        </div>
-
-        ${payloadStr ? `
-          <details style="margin-top:10px;">
-            <summary style="cursor:pointer; opacity:.85; font-size:13px;">保存された全データ（payload）</summary>
-            <pre style="margin:8px 0 0; padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.18); overflow:auto; max-height:260px;">${payloadStr}</pre>
-          </details>
-        ` : ""}
-      `;
-
-      target.appendChild(card);
-    });
-  }
-
-  async function fetchAndRender(room_id) {
-    const { data, error } = await supabase
-      .from("logs")
-      .select("id, created_at, text, result, payload")
-      .eq("room_id", room_id)
-      .order("created_at", { ascending: false })
-      .limit(200);
-
-    if (error) throw error;
-    renderLogs(data || []);
-  }
-
-  function setupRealtime(room_id) {
-    // 2重購読を避ける
-    if (setupRealtime._ch) {
-      supabase.removeChannel(setupRealtime._ch);
-      setupRealtime._ch = null;
-    }
-
-    const ch = supabase
-      .channel(`logs_room_${room_id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "logs", filter: `room_id=eq.${room_id}` },
-        async () => {
-          // 更新が来たら取り直す（簡単で確実）
-          try {
-            await fetchAndRender(room_id);
-          } catch (e) {
-            console.warn(e);
-          }
-        }
-      )
-      .subscribe();
-
-    setupRealtime._ch = ch;
-  }
-
-  function setupTabs() {
-    // 既存のタブUIに寄り添う（data-tabのbuttonがある想定）
-    const tabButtons = $$("button[data-tab]");
-    const panels = $$("[data-tab-panel]");
-
-    if (!tabButtons.length || !panels.length) return;
-
-    function activate(tabName) {
-      tabButtons.forEach((b) => b.classList.toggle("active", b.dataset.tab === tabName));
-      panels.forEach((p) => p.classList.toggle("active", p.dataset.tabPanel === tabName));
-    }
-
-    tabButtons.forEach((b) => {
-      b.addEventListener("click", () => activate(b.dataset.tab));
-    });
-  }
-
-  async function main() {
-    ensureRoomUi();
-    setupTabs();
-
-    // 1) 認証確保
-    await ensureAnonAuth();
-
-    // 2) 参加コード（URL優先）→ 無ければlocalStorage
-    const urlCode = parseUrlCode();
-    const local = loadRoomLocal();
-
-    let room_id = local.room_id;
-    let room_code = local.code;
-
-    // URLにcodeがあれば、それが最優先（相手から受け取ったケース）
-    if (urlCode) {
-      try {
-        room_id = await rpcJoinRoom(urlCode);
-        room_code = urlCode;
-        saveRoomLocal(room_id, room_code);
-        toast(`ルーム参加: ${room_code}`);
-      } catch (e) {
-        console.error(e);
-        toast("参加コードが無効か、参加に失敗しました。");
-        // URLのcodeが死んでるなら外しておく
-        setUrlCode("");
-      }
-    }
-
-    // 3) まだ room_id 無いなら：作成を促す状態
-    if (!room_id) {
-      setRoomStatus("(未接続) 共有ルーム作成 or 参加してね");
-    } else {
-      setRoomStatus(`${room_code || "(code?)"} / ${room_id.slice(0, 8)}…`);
-      await fetchAndRender(room_id);
-      setupRealtime(room_id);
-    }
-
-    // UI events
-    $("#btn-create-room")?.addEventListener("click", async () => {
-      try {
-        const made = await rpcCreateRoom();
-        room_id = made.room_id;
-        room_code = made.code;
-        saveRoomLocal(room_id, room_code);
-        setUrlCode(room_code);
-        setRoomStatus(`${room_code} / ${room_id.slice(0, 8)}…`);
-        toast(`ルーム作成: ${room_code}`);
-
-        await fetchAndRender(room_id);
-        setupRealtime(room_id);
-      } catch (e) {
-        console.error(e);
-        toast("ルーム作成に失敗しました。");
-      }
-    });
-
-    $("#btn-join-room")?.addEventListener("click", async () => {
-      const code = ($("#join-code")?.value || "").trim().toUpperCase();
-      if (!code) return toast("参加コードを入力してね。");
-
-      try {
-        const joined = await rpcJoinRoom(code);
-        room_id = joined;
-        room_code = code;
-        saveRoomLocal(room_id, room_code);
-        setUrlCode(room_code);
-        setRoomStatus(`${room_code} / ${room_id.slice(0, 8)}…`);
-        toast(`ルーム参加: ${room_code}`);
-
-        await fetchAndRender(room_id);
-        setupRealtime(room_id);
-      } catch (e) {
-        console.error(e);
-        toast("参加に失敗しました（コード違い or 権限）。");
-      }
-    });
-
-    $("#btn-copy-link")?.addEventListener("click", async () => {
-      const code = room_code || loadRoomLocal().code;
-      if (!code) return toast("共有コードがまだ無い（ルーム未作成/未参加）。");
-
-      const link = buildShareLink(code);
-      try {
-        await navigator.clipboard.writeText(link);
-        toast("共有リンクをコピーしました。");
-      } catch {
-        // clipboard不可環境のフォールバック
-        prompt("このリンクをコピーして共有してね:", link);
-      }
-    });
-
-    $("#btn-leave-room")?.addEventListener("click", () => {
-      clearRoomLocal();
-      setUrlCode("");
-      setRoomStatus("(未接続) 共有ルーム作成 or 参加してね");
-      if (setupRealtime._ch) {
-        supabase.removeChannel(setupRealtime._ch);
-        setupRealtime._ch = null;
-      }
-      // 履歴表示もクリア
-      const box = $("#wxk-history");
-      if (box) box.innerHTML = `<div style="opacity:.75; font-size:13px;">ルーム未接続です。</div>`;
-      toast("ルーム情報を解除しました。");
-    });
-
-    // 保存ボタンにフック（既存UIの保存/送信に乗る）
-    const saveBtn = findSaveButton();
-    if (saveBtn) {
-      saveBtn.addEventListener("click", async (ev) => {
-        // 既存がsubmitの場合に二重送信を避けたいなら preventDefault してもいいが、
-        // 既存仕様が不明なので基本は触らない。
-        try {
-          const rid = room_id || loadRoomLocal().room_id;
-          if (!rid) return toast("先に共有ルームを作成/参加してね。");
-
-          await insertLog(rid);
-          toast("保存しました。");
-          await fetchAndRender(rid);
-        } catch (e) {
-          console.error(e);
-          toast("保存に失敗しました（権限/接続/RLS）。");
-        }
-      });
-    } else {
-      // 保存ボタンが見つからない場合でも使えるように、Ctrl+Enter で保存
-      document.addEventListener("keydown", async (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-          try {
-            const rid = room_id || loadRoomLocal().room_id;
-            if (!rid) return toast("先に共有ルームを作成/参加してね。");
-            await insertLog(rid);
-            toast("保存しました。");
-            await fetchAndRender(rid);
-          } catch (err) {
-            console.error(err);
-            toast("保存に失敗しました。");
-          }
-        }
-      });
-    }
-  }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    main().catch((e) => {
-      console.error(e);
-      toast("初期化に失敗しました。Supabase設定を確認してね。");
-    });
   });
-})();
+
+  // ---------------------
+  // Supabase config
+  // ---------------------
+  // If you don't want cloud sync, set URL/KEY = "" and the app will run local-only.
+  const SUPABASE_URL = "https://nghnvqolxlzblwncpfgw.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_eMbDDZzJfNIheEzK04rsRw_oXMoc7fh";
+
+  const supabase =
+    (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase?.createClient)
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
 
   // ---------------------
   // Constants
@@ -691,6 +157,7 @@
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
     catch { return []; }
   }
+
   function saveLogsLocal(logs) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(logs)); } catch {}
   }
@@ -711,6 +178,7 @@
   function toggleChip(code, forceState = null) {
     const btn = chipButtons.get(code);
     if (!btn) return;
+
     const isActive = selectedErr.has(code);
     const next = (forceState === null) ? !isActive : forceState;
 
@@ -727,7 +195,7 @@
   }
 
   function renderErrChips() {
-    const wrap = $("errChips");
+    const wrap = $id("errChips");
     if (!wrap) return;
 
     wrap.innerHTML = "";
@@ -761,7 +229,7 @@
           tabs.forEach(t => t.classList.remove("active"));
           btn.classList.add("active");
           const id = `tab-${btn.dataset.tab}`;
-          const sec = $(id);
+          const sec = $id(id);
           if (sec) sec.classList.add("active");
         });
 
@@ -777,8 +245,8 @@
   // Slider label
   // ---------------------
   function bindSlider() {
-    const overload = $("overload");
-    const overloadVal = $("overloadVal");
+    const overload = $id("overload");
+    const overloadVal = $id("overloadVal");
     if (!overload || !overloadVal) return;
     overloadVal.textContent = overload.value;
     overload.addEventListener("input", () => overloadVal.textContent = overload.value);
@@ -788,12 +256,12 @@
   // Auth UI (Supabase optional)
   // ---------------------
   function setAuthMsg(msg) {
-    const el = $("authMsg");
+    const el = $id("authMsg");
     if (el) el.textContent = msg;
   }
 
   function updateAuthUI() {
-    const emailEl = $("authEmail");
+    const emailEl = $id("authEmail");
     if (emailEl && sessionUser?.email) emailEl.value = sessionUser.email;
 
     if (!supabase) {
@@ -829,10 +297,10 @@
       });
     });
 
-    const loginBtn = $("loginBtn");
+    const loginBtn = $id("loginBtn");
     if (loginBtn) {
       loginBtn.addEventListener("click", async () => {
-        const email = ($("authEmail")?.value || "").trim();
+        const email = ($id("authEmail")?.value || "").trim();
         if (!email) return setAuthMsg("メールを入れてください。");
 
         const { error } = await supabase.auth.signInWithOtp({
@@ -845,7 +313,7 @@
       });
     }
 
-    const logoutBtn = $("logoutBtn");
+    const logoutBtn = $id("logoutBtn");
     if (logoutBtn) {
       logoutBtn.addEventListener("click", async () => {
         await safe(() => supabase.auth.signOut());
@@ -858,7 +326,7 @@
   // Shared history owner select
   // ---------------------
   async function refreshOwnerOptions() {
-    const sel = $("ownerSelect");
+    const sel = $id("ownerSelect");
     if (!sel) return;
 
     ownerOptions = [];
@@ -877,12 +345,12 @@
     ownerOptions.push({ owner_id: sessionUser.id, label: "自分（クラウド）", isSelf: true });
 
     // shares where my email is viewer
-    const { data: shares, error } = await safe(async () => {
+    const resp = await safe(async () => {
       return await supabase.from("log_viewers").select("owner_id").eq("viewer_email", sessionUser.email);
-    }) || { data: null, error: null };
+    });
 
-    if (!error && Array.isArray(shares)) {
-      const uniq = Array.from(new Set(shares.map(x => x.owner_id).filter(Boolean)));
+    if (!resp?.error && Array.isArray(resp?.data)) {
+      const uniq = Array.from(new Set(resp.data.map(x => x.owner_id).filter(Boolean)));
       let n = 1;
       uniq.forEach((oid) => {
         if (oid !== sessionUser.id) {
@@ -894,7 +362,6 @@
     ownerOptions.forEach(o => sel.appendChild(new Option(o.label, o.owner_id)));
     sel.disabled = ownerOptions.length <= 1;
 
-    // pick current or default to self
     if (!activeOwnerId || !ownerOptions.some(o => o.owner_id === activeOwnerId)) {
       activeOwnerId = sessionUser.id;
     }
@@ -910,8 +377,8 @@
   // Save entry (always local, optional cloud)
   // ---------------------
   async function saveEntry() {
-    const profile = $("profile")?.value || "その他";
-    const overload = Number($("overload")?.value ?? 0);
+    const profile = $id("profile")?.value || "その他";
+    const overload = Number($id("overload")?.value ?? 0);
 
     const entry = {
       id: (crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + "_" + Math.random().toString(16).slice(2)),
@@ -919,15 +386,15 @@
       profile,
       overload,
       err: Array.from(selectedErr),
-      note: ($("note")?.value || "").trim(),
+      note: ($id("note")?.value || "").trim(),
       actions: {
-        distance: !!$("actDistance")?.checked,
-        scope: !!$("actScope")?.checked,
-        body: !!$("actBody")?.checked,
-        stop: !!$("actStop")?.checked
+        distance: !!$id("actDistance")?.checked,
+        scope: !!$id("actScope")?.checked,
+        body: !!$id("actBody")?.checked,
+        stop: !!$id("actStop")?.checked
       },
-      boundaryTpl: $("boundaryTpl")?.value || "",
-      boundaryNote: ($("boundaryNote")?.value || "").trim()
+      boundaryTpl: $id("boundaryTpl")?.value || "",
+      boundaryNote: ($id("boundaryNote")?.value || "").trim()
     };
 
     // local always
@@ -949,9 +416,9 @@
         boundary_note: entry.boundaryNote
       };
 
-      const { error } = await safe(async () => await supabase.from("logs").insert(payload)) || { error: null };
-      if (error) {
-        setText("saveMsg", `ローカル保存OK / クラウド同期失敗：${error.message}`);
+      const resp = await safe(async () => await supabase.from("logs").insert(payload));
+      if (resp?.error) {
+        setText("saveMsg", `ローカル保存OK / クラウド同期失敗：${resp.error.message}`);
         setTimeout(() => setText("saveMsg", ""), 2400);
         return;
       }
@@ -962,7 +429,7 @@
   }
 
   function bindSave() {
-    const btn = $("saveBtn");
+    const btn = $id("saveBtn");
     if (!btn) return;
     btn.addEventListener("click", () => safe(() => saveEntry()));
   }
@@ -971,11 +438,10 @@
   // List render (history)
   // ---------------------
   async function renderList() {
-    const ul = $("logList");
+    const ul = $id("logList");
     if (!ul) return;
 
     ul.innerHTML = "";
-
     await refreshOwnerOptions();
 
     // Local mode
@@ -1049,7 +515,7 @@
   // Export / Import (LOCAL ONLY)
   // ---------------------
   function bindExportImport() {
-    const exportBtn = $("exportBtn");
+    const exportBtn = $id("exportBtn");
     if (exportBtn) {
       exportBtn.addEventListener("click", () => {
         safe(() => {
@@ -1064,7 +530,7 @@
       });
     }
 
-    const importFile = $("importFile");
+    const importFile = $id("importFile");
     if (importFile) {
       importFile.addEventListener("change", async (e) => {
         const f = e.target.files?.[0];
@@ -1089,7 +555,7 @@
   // Wipe (LOCAL ONLY)
   // ---------------------
   function bindWipe() {
-    const wipeBtn = $("wipeBtn");
+    const wipeBtn = $id("wipeBtn");
     if (!wipeBtn) return;
     wipeBtn.addEventListener("click", () => {
       safe(() => {
@@ -1105,20 +571,20 @@
   // Settings: manage viewers (owner only)
   // ---------------------
   async function renderSettings() {
-    const viewerList = $("viewerList");
+    const viewerList = $id("viewerList");
     if (viewerList) viewerList.innerHTML = "";
 
     if (!supabase || !sessionUser) return;
 
-    const addBtn = $("addViewerBtn");
+    const addBtn = $id("addViewerBtn");
     if (addBtn && !addBtn.dataset.bound) {
       addBtn.dataset.bound = "1";
       addBtn.addEventListener("click", async () => {
-        const vEmail = ($("viewerEmail")?.value || "").trim().toLowerCase();
+        const vEmail = ($id("viewerEmail")?.value || "").trim().toLowerCase();
         if (!vEmail) return alert("閲覧者メールを入れてください。");
         const resp = await safe(async () => await supabase.from("log_viewers").insert({ owner_id: sessionUser.id, viewer_email: vEmail }));
         if (resp?.error) return alert(`追加失敗：${resp.error.message}`);
-        if ($("viewerEmail")) $("viewerEmail").value = "";
+        if ($id("viewerEmail")) $id("viewerEmail").value = "";
         await renderViewerList();
       });
     }
@@ -1127,7 +593,7 @@
   }
 
   async function renderViewerList() {
-    const ul = $("viewerList");
+    const ul = $id("viewerList");
     if (!ul) return;
     ul.innerHTML = "";
 
@@ -1180,6 +646,7 @@
   // - CRITICAL/安全を最初に検知
   // - 生活基盤（睡眠/食/水/疲労）→認知/気分→対人境界→研究作業→衝動→夜ルール
   // - YES/NOで加点、最後に profileBoost で軽い事前分布補正
+  // ✅ ここは「あなたが貼った DIAG_Q」に省略なしで準拠
   const DIAG_Q = [
     // --- Safety first / crisis ---
     { id:"crisis1", q:"今、危険（自己破壊衝動/安全が揺らぐ/一人がまずい）？", yes:{ "E700": 10, "E710": 4 }, no:{} },
@@ -1311,8 +778,8 @@
   }
 
   function renderDiag() {
-    const box = $("diagBox");
-    const res = $("diagResult");
+    const box = $id("diagBox");
+    const res = $id("diagResult");
     if (!box || !res) return;
 
     box.innerHTML = "";
@@ -1343,8 +810,8 @@
         </div>
       `;
 
-      const yesBtn = $("yesBtn");
-      const noBtn = $("noBtn");
+      const yesBtn = $id("yesBtn");
+      const noBtn = $id("noBtn");
       if (yesBtn) yesBtn.addEventListener("click", () => apply(node.yes));
       if (noBtn) noBtn.addEventListener("click", () => apply(node.no));
     }
@@ -1358,7 +825,7 @@
     }
 
     function finish() {
-      const profile = $("profile")?.value || "その他";
+      const profile = $id("profile")?.value || "その他";
       scores = profileBoost(profile, scores);
 
       const top = sortTop(scores);
@@ -1406,8 +873,8 @@
         ${rows}
       `;
 
-      $("restartBtn")?.addEventListener("click", renderDiag);
-      $("applyBtn")?.addEventListener("click", () => {
+      $id("restartBtn")?.addEventListener("click", renderDiag);
+      $id("applyBtn")?.addEventListener("click", () => {
         safe(() => {
           // Switch to input tab
           qs('nav button[data-tab="log"]')?.click();
@@ -1423,7 +890,6 @@
   // Boot: bind everything after DOM ready
   // ---------------------
   async function boot() {
-    // Make sure "partial DOM" does not kill the app
     safe(renderErrChips);
     safe(bindTabs);
     safe(bindSlider);
@@ -1440,7 +906,6 @@
     if (activeTab === "list") await safe(async () => await renderList());
     if (activeTab === "diag") safe(renderDiag);
 
-    // Expose tiny debug info (optional)
     console.log("[WXK] boot ok", {
       supabaseEnabled: !!supabase,
       sessionUser,
