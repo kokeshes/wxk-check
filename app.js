@@ -3,32 +3,19 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch(() => {});
 }
 
-// ====== ここから本体（DOM準備後に初期化） ======
 window.addEventListener("DOMContentLoaded", () => {
-  // もしこのページに必要要素が無ければ何もしない（別ページ誤読込対策）
+  // 必須DOMが無いページでは何もしない
   const errChips = document.getElementById("errChips");
   const diagBox = document.getElementById("diagBox");
   const diagResult = document.getElementById("diagResult");
   if (!errChips || !diagBox || !diagResult) return;
 
-  // 画面にJSエラーを出す（原因特定が一瞬でできる）
-  window.addEventListener("error", (e) => {
-    const box = document.createElement("div");
-    box.className = "card";
-    box.style.borderColor = "#b00020";
-    box.innerHTML = `
-      <div style="font-weight:700;color:#b00020;">JSエラーで停止しました</div>
-      <div class="muted" style="margin-top:6px;">${String(e.message || "unknown")}</div>
-      <div class="muted" style="margin-top:6px;">${String(e.filename || "")}:${String(e.lineno || "")}</div>
-    `;
-    document.body.prepend(box);
-  });
-
   // --- Constants ---
   const STORAGE_KEY = "wxk_logs_v1";
 
+  // ERRコード（3桁 + Eコード）
   const ERR_CODES = [
-    // ====== 既存 3桁コード ======
+    // ===== 3桁 =====
     { code: "001", name: "常駐要求過負荷", sev: "Critical", quick: "範囲・期限を宣言／距離復帰" },
     { code: "002", name: "境界侵害", sev: "Critical", quick: "中断／距離復帰" },
     { code: "003", name: "責任未定義ループ", sev: "High", quick: "『誰が決める？』を確定" },
@@ -41,10 +28,10 @@ window.addEventListener("DOMContentLoaded", () => {
     { code: "202", name: "曖昧関係長期化", sev: "Critical", quick: "定義要求 or 離脱" },
     { code: "203", name: "反応テスト検知", sev: "Critical", quick: "不可宣言／継続なら終了" },
     { code: "204", name: "身体遮断", sev: "High", quick: "接触中止／安全再構築" },
-    { code: "301", name: "学際翻訳過多", sev: "Med", quick: "仮結論を先に置く" },
+    { code: "301", name: "学際翻訳過多", sev: "Med", quick: "仮結論を先に置く／対象読者を固定" },
     { code: "303", name: "締切未設定", sev: "High", quick: "擬似締切を作る（外部提出）" },
 
-    // ====== 追加 Eコード ======
+    // ===== Eコード（取説のエラー表）=====
     { code: "E000", name: "平常運転（異常なし）", sev: "Info", quick: "維持。良かった要因を1行ログ" },
     { code: "E010", name: "雷出力：安定（集中・快）", sev: "Info", quick: "45–90分ごとに小休止＋水分固定" },
     { code: "E011", name: "思考が“外部モード”へ（距離が取れる）", sev: "Info", quick: "分析OK。感情は日本語で1回着地" },
@@ -76,10 +63,10 @@ window.addEventListener("DOMContentLoaded", () => {
   const SEVERITY_RANK = { Critical: 3, High: 2, Med: 1, Info: 0 };
 
   // --- Tabs ---
-  document.querySelectorAll("nav button").forEach((btn) => {
+  document.querySelectorAll("nav button").forEach(btn => {
     btn.addEventListener("click", () => {
-      document.querySelectorAll("nav button").forEach((b) => b.classList.remove("active"));
-      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+      document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
       btn.classList.add("active");
       document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
       if (btn.dataset.tab === "list") renderList();
@@ -90,18 +77,19 @@ window.addEventListener("DOMContentLoaded", () => {
   // --- Slider label ---
   const overload = document.getElementById("overload");
   const overloadVal = document.getElementById("overloadVal");
-  overload.addEventListener("input", () => (overloadVal.textContent = overload.value));
+  overload.addEventListener("input", () => overloadVal.textContent = overload.value);
 
   // --- ERR chips ---
   const selectedErr = new Set();
   const chipButtons = new Map(); // code -> button
 
-  ERR_CODES.forEach((e) => {
+  ERR_CODES.forEach(e => {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "chip";
     b.textContent = `${e.code} ${e.name}`;
     b.dataset.code = e.code;
+
     b.addEventListener("click", () => toggleChip(e.code));
     errChips.appendChild(b);
     chipButtons.set(e.code, b);
@@ -111,7 +99,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const btn = chipButtons.get(code);
     if (!btn) return;
     const isActive = selectedErr.has(code);
-    const next = forceState === null ? !isActive : forceState;
+    const next = (forceState === null) ? !isActive : forceState;
 
     if (next) selectedErr.add(code);
     else selectedErr.delete(code);
@@ -121,7 +109,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function setChipsFromCodes(codes) {
     for (const code of selectedErr) toggleChip(code, false);
-    codes.forEach((c) => toggleChip(c, true));
+    codes.forEach(c => toggleChip(c, true));
   }
 
   // --- Storage helpers ---
@@ -176,7 +164,7 @@ window.addEventListener("DOMContentLoaded", () => {
     ul.innerHTML = "";
     const logs = loadLogs();
 
-    logs.forEach((ent) => {
+    logs.forEach(ent => {
       const li = document.createElement("li");
       li.className = "card";
 
@@ -192,7 +180,7 @@ window.addEventListener("DOMContentLoaded", () => {
       `;
 
       li.querySelector("[data-del]").addEventListener("click", () => {
-        const next = loadLogs().filter((x) => x.id !== ent.id);
+        const next = loadLogs().filter(x => x.id !== ent.id);
         saveLogs(next);
         renderList();
       });
@@ -238,42 +226,80 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   // --------------------
-  // Diagnosis
+  // Diagnosis Questions (充実版)
   // --------------------
+  // ※ すべてキーは "E700": 5 のように文字列で統一
   const DIAG_Q = [
-    { id:"crisis1", q:"今、危険（自己破壊衝動/安全が揺らぐ/一人がまずい）？", yes:{ "E700":8, "E710":4 }, no:{} },
-    { id:"dereal",  q:"現実感が薄い／自分が遠い感じがある？", yes:{ "E710":7, "E700":2 }, no:{} },
+    // ====== A. Safety / Crisis ======
+    { id:"A1", q:"今、危険（自己破壊衝動/安全が揺らぐ/一人がまずい）？", yes:{ "E700":10, "E710":4 }, no:{} },
+    { id:"A2", q:"現実感が薄い／自分が遠い（ぼんやり・離人）？", yes:{ "E710":10, "E700":3 }, no:{} },
+    { id:"A3", q:"今すぐ刺激源（人/通知/場所）から離れたほうがいい感じ？", yes:{ "E700":6, "E220":3, "002":2 }, no:{} },
 
-    { id:"sleep", q:"睡眠が足りない（6h未満/質が悪い）？", yes:{ "E100":4, "E320":1, "E330":1, "005":1 }, no:{} },
-    { id:"food",  q:"空腹・食事抜き・糖が足りない感じ？", yes:{ "E110":4, "E310":1, "E300":1 }, no:{} },
-    { id:"water", q:"水分不足っぽい（口渇/頭痛/めまい/暖房/運動後）？", yes:{ "E120":4, "E320":1, "E330":1 }, no:{} },
-    { id:"overloadBody", q:"疲労が溜まり、体力と情緒が同時に落ちてる？", yes:{ "E130":5, "001":2, "004":1 }, no:{} },
+    // ====== B. Body / Life base ======
+    { id:"B1", q:"睡眠が足りない（6h未満/質が悪い/連日）？", yes:{ "E100":6, "E320":2, "E330":2, "005":1 }, no:{} },
+    { id:"B2", q:"空腹・食事抜き・糖が足りない感じ？", yes:{ "E110":6, "E310":2, "E300":2 }, no:{} },
+    { id:"B3", q:"水分不足っぽい（口渇/頭痛/めまい/暖房/運動後）？", yes:{ "E120":6, "E320":2, "E330":1 }, no:{} },
+    { id:"B4", q:"疲労が溜まり、体力と情緒が同時に落ちてる？", yes:{ "E130":7, "001":2, "004":2 }, no:{} },
+    { id:"B5", q:"身体が固い／呼吸が浅い／交感神経が上がりっぱなし？", yes:{ "E210":3, "E320":2, "E130":2 }, no:{} },
 
-    { id:"boundaryThin", q:"優しくしすぎて抱え込みモードになってる？", yes:{ "E200":4, "104":2, "004":1 }, no:{} },
-    { id:"freeze", q:"侵害刺激（嫌な言葉/圧/ハラスメント）で固まる・反芻が出てる？", yes:{ "E210":6, "002":3, "203":2 }, no:{} },
-    { id:"dangerApproach", q:"相手の踏み込みが増えて“引き込まれそう”？", yes:{ "E220":7, "202":3, "201":2 }, no:{} },
-    { id:"test", q:"相手が試し行為（嫉妬/沈黙/既読無視/揺さぶり）をしてる？", yes:{ "203":6, "202":3, "E220":2 }, no:{ "102":2 } },
+    // ====== C. People / Boundary ======
+    { id:"C1", q:"優しくしすぎて抱え込みモードになってる？", yes:{ "E200":6, "104":3, "004":2 }, no:{} },
+    { id:"C2", q:"連絡・要求が増えて“常駐”を期待されてる？", yes:{ "001":6, "201":3, "104":2 }, no:{} },
+    { id:"C3", q:"相手の踏み込みが増えて“引き込まれそう”？（密室化/頻度増/曖昧許容）", yes:{ "E220":7, "202":4, "201":3 }, no:{} },
+    { id:"C4", q:"侵害刺激（嫌な言葉/圧/ハラスメント）で固まる・反芻が出てる？", yes:{ "E210":7, "002":4, "203":2 }, no:{} },
+    { id:"C5", q:"相手が試し行為（嫉妬/沈黙/既読無視/揺さぶり）をしてる？", yes:{ "203":7, "202":3, "E220":2 }, no:{ "102":2 } },
+    { id:"C6", q:"関係の定義が曖昧なまま長引いてる？（期待と不安が循環）", yes:{ "202":7, "201":2, "003":1 }, no:{} },
+    { id:"C7", q:"境界線を言うと嫌われる/壊れる気がして言えない？", yes:{ "102":4, "E200":3, "201":2 }, no:{} },
+    { id:"C8", q:"いま“身体接触/私的接触”が危ない（線引きが必要）？", yes:{ "204":5, "E220":4, "002":2 }, no:{} },
 
-    { id:"anx", q:"最悪想定が止まらない？", yes:{ "E320":5, "005":1, "003":1 }, no:{} },
-    { id:"selfhate", q:"自己否定（恥/罪悪感/罵倒）ループに入ってる？", yes:{ "E330":5, "004":1 }, no:{} },
-    { id:"anger", q:"怒りの熱で言葉が強くなりそう？（即返信したい）", yes:{ "E310":4, "102":1 }, no:{} },
-    { id:"rush", q:"焦ってタスクが空回りしてる？", yes:{ "E300":4, "303":1 }, no:{} },
+    // ====== D. Cognition / Mood ======
+    { id:"D1", q:"最悪想定が止まらない？", yes:{ "E320":7, "005":2, "003":1 }, no:{} },
+    { id:"D2", q:"自己否定（恥/罪悪感/罵倒）ループに入ってる？", yes:{ "E330":7, "004":2 }, no:{} },
+    { id:"D3", q:"怒りの熱で言葉が強くなりそう？", yes:{ "E310":6, "102":2 }, no:{} },
+    { id:"D4", q:"焦ってタスクが空回り（手が散る/全部重い）？", yes:{ "E300":6, "303":2, "001":1 }, no:{} },
+    { id:"D5", q:"感情を“処理”し続けて受信過多になってる？", yes:{ "004":7, "104":3, "E200":2 }, no:{} },
+    { id:"D6", q:"夜に文章や判断が“過剰に意味深”になる傾向が出てる？", yes:{ "005":6, "E320":2, "003":1 }, no:{} },
 
-    { id:"hyperfocus", q:"時間感覚が飛ぶ没入が出てる？", yes:{ "E500":4, "E010":1 }, no:{} },
-    { id:"ruminateWork", q:"同じ文/同じ考えを焼き続けて進まない？", yes:{ "E510":5, "003":1, "005":1 }, no:{} },
+    // ====== E. Work / Research (精密化：301/303/500/510/003) ======
+    // 303：締切未設定
+    { id:"E1", q:"締切がない/外部提出がないせいで終わらない？", yes:{ "303":7, "E300":2, "E510":1 }, no:{} },
+    { id:"E2", q:"「いつまでに何を出すか」が一文で言えない？", yes:{ "303":5, "003":2, "E300":1 }, no:{} },
 
-    { id:"urgeLight", q:"口寂しさ/儀式が欲しい程度の渇望がある？", yes:{ "E400":3 }, no:{} },
-    { id:"urgeStrong", q:"渇望が強く、思考が奪われてる？", yes:{ "E410":5, "E130":1 }, no:{} },
+    // 003：責任未定義
+    { id:"E3", q:"責任の所在が曖昧（誰が決める？）で止まってる？", yes:{ "003":7, "001":2, "104":1 }, no:{} },
+    { id:"E4", q:"意思決定を自分で全部抱えてしまってる？（合意・委任がない）", yes:{ "003":5, "104":2, "001":1 }, no:{} },
 
-    { id:"night", q:"夜に結論を出したくなってる？", yes:{ "005":4, "003":1, "E320":1 }, no:{} }
+    // 301：学際翻訳過多（ここが本丸）
+    { id:"E5", q:"“説明のための説明”が増えて、本題が進まない？", yes:{ "301":7, "E510":2, "E300":1 }, no:{} },
+    { id:"E6", q:"読者/相手（誰に向けた文か）が固定されていない？", yes:{ "301":6, "303":1 }, no:{} },
+    { id:"E7", q:"レイヤーが混線（概念整理/批判/実証/例示が同じ段落に混ざる）？", yes:{ "301":6, "E510":2 }, no:{} },
+    { id:"E8", q:"一次資料（原典/論文）の読み込みが詰まって、翻訳だけが回ってる？", yes:{ "301":5, "E500":1, "E510":2 }, no:{} },
+    { id:"E9", q:"比喩・横道・関連知識が増えて、主張の線が太くならない？", yes:{ "301":5, "005":2 }, no:{} },
+
+    // 500：過集中
+    { id:"E10", q:"時間感覚が飛ぶ没入が出てる？（補給忘れ）", yes:{ "E500":6, "E010":2, "E120":1 }, no:{} },
+    { id:"E11", q:"集中が切れた瞬間に急落する（燃料切れ→荒れ）？", yes:{ "E500":4, "E130":2, "E330":1 }, no:{} },
+
+    // 510：反芻
+    { id:"E12", q:"同じ文/同じ考えを焼き続けて進まない？", yes:{ "E510":7, "003":2, "005":1 }, no:{} },
+    { id:"E13", q:"「保留」の宣言ができず、決着を求めて詰まってる？", yes:{ "E510":5, "303":2, "003":1 }, no:{} },
+
+    // ====== F. Urge / craving ======
+    { id:"F1", q:"口寂しさ/儀式が欲しい程度の渇望がある？", yes:{ "E400":5 }, no:{} },
+    { id:"F2", q:"渇望が強く、思考が奪われてる？", yes:{ "E410":7, "E130":2, "E110":1 }, no:{} },
+
+    // ====== G. Night rule / finishing ======
+    { id:"G1", q:"夜に結論を出したくなってる？（即断・長文化）", yes:{ "005":6, "003":2, "E320":1 }, no:{} },
+    { id:"G2", q:"今日の自分は“整えるより決めたい”モードが強い？", yes:{ "005":4, "003":2, "E300":1 }, no:{} }
   ];
 
   function getErrMeta(code) {
-    const ref = ERR_CODES.find((e) => e.code === code);
+    const ref = ERR_CODES.find(e => e.code === code);
     if (!ref) return { sev: "Info", name: "不明", quick: "距離復帰／範囲を決める" };
     return ref;
   }
 
+  // プロファイル補正（起きやすさの微加点）
   function profileBoost(profile, scores) {
     switch (profile) {
       case "恋愛":
@@ -288,9 +314,8 @@ window.addEventListener("DOMContentLoaded", () => {
         scores["003"] = (scores["003"] || 0) + 1;
         scores["301"] = (scores["301"] || 0) + 1;
         scores["303"] = (scores["303"] || 0) + 1;
-        scores["E300"] = (scores["E300"] || 0) + 1;
-        scores["E510"] = (scores["E510"] || 0) + 1;
         scores["E500"] = (scores["E500"] || 0) + 1;
+        scores["E510"] = (scores["E510"] || 0) + 1;
         break;
 
       case "相談/友人":
@@ -299,7 +324,6 @@ window.addEventListener("DOMContentLoaded", () => {
         scores["101"] = (scores["101"] || 0) + 1;
         scores["E200"] = (scores["E200"] || 0) + 1;
         scores["E210"] = (scores["E210"] || 0) + 1;
-        scores["E330"] = (scores["E330"] || 0) + 1;
         break;
 
       case "単独":
@@ -311,7 +335,6 @@ window.addEventListener("DOMContentLoaded", () => {
 
       default:
         scores["E300"] = (scores["E300"] || 0) + 1;
-        scores["004"] = (scores["004"] || 0) + 1;
         break;
     }
     return scores;
@@ -319,7 +342,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function sortTop(scores) {
     const arr = Object.entries(scores)
-      .filter(([, v]) => v > 0)
+      .filter(([,v]) => v > 0)
       .map(([code, score]) => {
         const meta = getErrMeta(code);
         return {
@@ -345,7 +368,27 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function hasCritical(top) {
-    return top.some((t) => t.sev === "Critical");
+    return top.some(t => t.sev === "Critical");
+  }
+
+  // overload(0–5) を診断に加点
+  function overloadBoost(scores) {
+    const ov = Number(document.getElementById("overload")?.value || 0);
+
+    if (ov >= 5) {
+      scores["E130"] = (scores["E130"] || 0) + 4;
+      scores["001"]  = (scores["001"]  || 0) + 2;
+      scores["004"]  = (scores["004"]  || 0) + 2;
+      scores["E330"] = (scores["E330"] || 0) + 1;
+    } else if (ov >= 4) {
+      scores["E130"] = (scores["E130"] || 0) + 3;
+      scores["001"]  = (scores["001"]  || 0) + 1;
+      scores["004"]  = (scores["004"]  || 0) + 1;
+    } else if (ov >= 3) {
+      scores["E300"] = (scores["E300"] || 0) + 1;
+      scores["E320"] = (scores["E320"] || 0) + 1;
+    }
+    return scores;
   }
 
   function renderDiag() {
@@ -374,7 +417,7 @@ window.addEventListener("DOMContentLoaded", () => {
             <button id="yesBtn" class="primary">YES</button>
             <button id="noBtn">NO</button>
           </div>
-          <div class="muted" style="margin-top:8px;">${idx + 1} / ${DIAG_Q.length}</div>
+          <div class="muted" style="margin-top:8px;">${idx+1} / ${DIAG_Q.length}</div>
         </div>
       `;
 
@@ -392,21 +435,9 @@ window.addEventListener("DOMContentLoaded", () => {
 
     function finish() {
       const profile = document.getElementById("profile")?.value || "その他";
-      scores = profileBoost(profile, scores);
 
-      // overloadはHTMLで 0-5 なのでそれに合わせる
-      const ov = Number(document.getElementById("overload")?.value || 0);
-      if (ov >= 5) {
-        scores["E130"] = (scores["E130"] || 0) + 3;
-        scores["001"]  = (scores["001"]  || 0) + 2;
-        scores["004"]  = (scores["004"]  || 0) + 1;
-      } else if (ov >= 4) {
-        scores["E130"] = (scores["E130"] || 0) + 2;
-        scores["001"]  = (scores["001"]  || 0) + 1;
-      } else if (ov >= 3) {
-        scores["E300"] = (scores["E300"] || 0) + 1;
-        scores["E320"] = (scores["E320"] || 0) + 1;
-      }
+      scores = profileBoost(profile, scores);
+      scores = overloadBoost(scores);
 
       const top = sortTop(scores);
       const critical = hasCritical(top);
@@ -424,7 +455,8 @@ window.addEventListener("DOMContentLoaded", () => {
             <div class="card">
               <div><strong>#${i+1} OK（Monitor）</strong></div>
               <div class="muted" style="margin-top:6px;"><strong>即応：</strong> ${escapeHtml(t.quick)}</div>
-            </div>`;
+            </div>
+          `;
         }
         return `
           <div class="card">
@@ -432,7 +464,8 @@ window.addEventListener("DOMContentLoaded", () => {
               <span class="muted">（${escapeHtml(t.sev)} / score ${t.score}）</span>
             </div>
             <div class="muted" style="margin-top:6px;"><strong>即応：</strong> ${escapeHtml(t.quick)}</div>
-          </div>`;
+          </div>
+        `;
       }).join("");
 
       const codesToApply = top.filter(t => t.code !== "OK").map(t => t.code);
@@ -440,7 +473,10 @@ window.addEventListener("DOMContentLoaded", () => {
       res.innerHTML = `
         ${banner}
         <div class="card">
-          <div><strong>結果：上位3候補</strong> <span class="muted">（プロファイル：${escapeHtml(profile)}）</span></div>
+          <div><strong>結果：上位3候補</strong> <span class="muted">（プロファイル：${escapeHtml(profile)} / 過負荷 ${escapeHtml(String(overload.value))}）</span></div>
+          <div class="muted" style="margin-top:6px;">
+            複合要因が前提。まず #1 を実施し、必要なら #2/#3 を追加。
+          </div>
           <div class="row" style="margin-top:10px;">
             <button id="applyBtn" class="primary" ${codesToApply.length ? "" : "disabled"}>この結果をERR候補に反映</button>
             <button id="restartBtn">もう一回</button>
@@ -460,6 +496,4 @@ window.addEventListener("DOMContentLoaded", () => {
       box.innerHTML = `<div class="card"><div class="muted">診断が完了しました。</div></div>`;
     }
   }
-
-  // 初回：診断タブを開いた時にrenderするのでここでは何もしない
 });
