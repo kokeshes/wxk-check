@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="styles.css" />
   <title>WXK Check</title>
 </head>
+	<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
 <body>
   <header>
     <h1>WXK Check</h1>
@@ -77,6 +79,11 @@
     <!-- 履歴 -->
     <section id="tab-list" class="tab">
       <h2>履歴</h2>
+		<div class="row" style="margin-bottom:10px;">
+  <label>表示対象
+    <select id="ownerSelect"></select>
+  </label>
+</div>
       <div class="row">
         <button id="exportBtn">エクスポート（JSON）</button>
         <label class="file">
@@ -100,6 +107,29 @@
 	<p>
 		<a href="./manual/index.html">取扱説明書（完全版）を開く</a>
 	</p>
+<div class="card">
+  <h3>ログイン（メール）</h3>
+  <label>メール
+    <input id="authEmail" type="email" placeholder="you@example.com" />
+  </label>
+  <div class="row" style="margin-top:10px;">
+    <button id="loginBtn" class="primary">ログインリンクを送る</button>
+    <button id="logoutBtn">ログアウト</button>
+  </div>
+  <p id="authMsg" class="muted"></p>
+</div>
+
+<div class="card">
+  <h3>履歴の共有（オーナー専用）</h3>
+  <p class="muted">ここに登録したメールアドレスのユーザーは、あなたの「履歴（メモ含む）」を閲覧できます。</p>
+  <label>閲覧者のメール
+    <input id="viewerEmail" type="email" placeholder="partner@example.com" />
+  </label>
+  <div class="row" style="margin-top:10px;">
+    <button id="addViewerBtn" class="primary">閲覧者を追加</button>
+  </div>
+  <ul id="viewerList" class="list" style="margin-top:10px;"></ul>
+</div>
 
       <button id="wipeBtn" class="danger">全データ削除</button>
 		
