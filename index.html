@@ -5,221 +5,175 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light dark" />
   <title>WXK Check</title>
-
-  <!-- 任意：PWA -->
-  <link rel="manifest" href="./manifest.webmanifest">
-  <meta name="theme-color" content="#111111">
-
   <style>
     :root{
       --bg:#0f0f10; --card:#161618; --text:#f2f2f2; --muted:#b9b9b9;
-      --line:#2a2a2d; --accent:#ffffff; --danger:#ff4d6d;
+      --line:#2a2a2d; --danger:#ff4d6d;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       --sans: -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans JP", sans-serif;
       --w: 980px;
     }
     @media (prefers-color-scheme: light){
-      :root{ --bg:#f7f7f8; --card:#ffffff; --text:#111; --muted:#555; --line:#ddd; --accent:#111; }
+      :root{ --bg:#fafafa; --card:#ffffff; --text:#111; --muted:#555; --line:#e6e6e6; }
     }
     body{ margin:0; font-family:var(--sans); background:var(--bg); color:var(--text); }
-    header{ max-width:var(--w); margin:0 auto; padding:16px 16px 8px; }
-    h1{ margin:0 0 8px; font-size:18px; letter-spacing:.02em; }
-    .muted{ color:var(--muted); font-size:13px; line-height:1.4; }
-    main{ max-width:var(--w); margin:0 auto; padding:0 16px 40px; }
-    nav{ display:flex; gap:8px; padding:8px 0 16px; flex-wrap:wrap; }
-    nav button{
-      border:1px solid var(--line); background:transparent; color:var(--text);
-      padding:8px 12px; border-radius:10px; cursor:pointer; font-size:14px;
-    }
-    nav button.active{ background:var(--card); }
+    header{ max-width:var(--w); margin:0 auto; padding:18px 14px; }
+    main{ max-width:var(--w); margin:0 auto; padding:0 14px 40px; }
+    .card{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin:10px 0; }
+    .muted{ color:var(--muted); font-size:0.95rem; }
+    nav{ display:flex; gap:8px; flex-wrap:wrap; }
+    nav button{ border:1px solid var(--line); background:transparent; color:var(--text); padding:8px 10px; border-radius:10px; cursor:pointer; }
+    nav button.active{ background:var(--text); color:var(--bg); border-color:transparent; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    input, select, textarea{ width:100%; box-sizing:border-box; padding:10px; border-radius:10px; border:1px solid var(--line); background:transparent; color:var(--text); }
+    textarea{ min-height:90px; }
+    button.primary{ background:var(--text); color:var(--bg); border:0; padding:10px 12px; border-radius:10px; cursor:pointer; }
+    button.danger{ background:transparent; color:var(--danger); border:1px solid var(--danger); padding:10px 12px; border-radius:10px; cursor:pointer; }
+    ul{ list-style:none; padding:0; margin:0; }
+    .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+    .chip{ border:1px solid var(--line); background:transparent; color:var(--text); padding:8px 10px; border-radius:999px; cursor:pointer; font-size:0.92rem; }
+    .chip.active{ background:var(--text); color:var(--bg); border-color:transparent; }
     .tab{ display:none; }
     .tab.active{ display:block; }
-    .grid{ display:grid; grid-template-columns: 1fr; gap:12px; }
-    @media (min-width: 860px){ .grid{ grid-template-columns: 1.1fr .9fr; } }
-    .card{
-      border:1px solid var(--line); background:var(--card); border-radius:14px;
-      padding:14px; box-shadow: 0 6px 20px rgba(0,0,0,.10);
-    }
-    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-    input, select, textarea{
-      width:100%; box-sizing:border-box;
-      border:1px solid var(--line); background:transparent; color:var(--text);
-      padding:10px 12px; border-radius:12px; font-size:14px;
-    }
-    textarea{ min-height:88px; resize:vertical; }
-    button.primary{
-      border:1px solid var(--line); background:var(--accent); color:var(--bg);
-      padding:10px 12px; border-radius:12px; cursor:pointer; font-weight:700;
-    }
-    button.danger{
-      border:1px solid var(--danger); background:transparent; color:var(--danger);
-      padding:8px 10px; border-radius:12px; cursor:pointer; font-weight:700;
-    }
-    button:disabled{ opacity:.5; cursor:not-allowed; }
-    .chips{ display:flex; flex-wrap:wrap; gap:8px; }
-    .chip{
-      border:1px solid var(--line); background:transparent; color:var(--text);
-      padding:8px 10px; border-radius:999px; cursor:pointer; font-size:12px;
-    }
-    .chip.active{ background:var(--text); color:var(--bg); }
-    ul{ list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px; }
-    label{ font-size:13px; color:var(--muted); display:block; margin:10px 0 6px; }
-    .kpi{ font-family:var(--mono); font-size:12px; color:var(--muted); }
-    .sep{ height:1px; background:var(--line); margin:12px 0; }
+    .mono{ font-family:var(--mono); }
   </style>
 </head>
-
 <body>
   <header>
-    <h1>WXK Check</h1>
-    <div class="muted">ローカル保存＋Supabase共有（メールOTP）。UIが壊れても落ちにくい安全設計。</div>
+    <div class="row" style="justify-content:space-between;">
+      <div>
+        <div style="font-weight:800;font-size:1.2rem;">WXK Check</div>
+        <div class="muted">ローカル保存 + Supabase共有（メールOTP）</div>
+      </div>
+    </div>
+    <div class="card">
+      <nav>
+        <button class="active" data-tab="log">記録</button>
+        <button data-tab="list">履歴</button>
+        <button data-tab="diag">診断</button>
+        <button data-tab="settings">共有設定</button>
+      </nav>
+    </div>
   </header>
 
   <main>
-    <nav>
-      <button class="active" data-tab="log">Log</button>
-      <button data-tab="list">History</button>
-      <button data-tab="diag">Diagnosis</button>
-      <button data-tab="settings">Settings</button>
-    </nav>
+    <!-- Auth -->
+    <section class="card">
+      <div class="row">
+        <div style="flex:1; min-width:240px;">
+          <label class="muted" for="authEmail">メール（OTPログイン）</label>
+          <input id="authEmail" type="email" placeholder="you@example.com" />
+        </div>
+        <div class="row" style="gap:8px;">
+          <button id="loginBtn" class="primary" type="button">ログインリンク送信</button>
+          <button id="logoutBtn" type="button">ログアウト</button>
+        </div>
+      </div>
+      <div id="authMsg" class="muted" style="margin-top:8px;"></div>
+    </section>
 
-    <!-- Log -->
-    <section class="tab active" id="tab-log">
-      <div class="grid">
-        <div class="card">
-          <div class="row">
-            <div style="flex:1">
-              <div class="muted">プロファイル</div>
-              <select id="profile">
-                <option>その他</option>
-                <option>恋愛</option>
-                <option>仕事/研究</option>
-                <option>相談/友人</option>
-                <option>単独</option>
-              </select>
-            </div>
-            <div style="flex:1">
-              <div class="muted">過負荷</div>
-              <div class="row">
-                <input id="overload" type="range" min="0" max="6" value="0" />
-                <div class="kpi">値: <span id="overloadVal">0</span></div>
-              </div>
-            </div>
+    <!-- Tabs -->
+    <section id="tab-log" class="tab active">
+      <div class="card">
+        <div class="row">
+          <div style="flex:1; min-width:180px;">
+            <label class="muted" for="profile">プロファイル</label>
+            <select id="profile">
+              <option>その他</option>
+              <option>恋愛</option>
+              <option>仕事/研究</option>
+              <option>相談/友人</option>
+              <option>単独</option>
+            </select>
           </div>
-
-          <div class="sep"></div>
-
-          <label>ERR チップ（複数選択）</label>
-          <div id="errChips" class="chips"></div>
-
-          <label>メモ</label>
-          <textarea id="note" placeholder="自由記述"></textarea>
-
-          <div class="sep"></div>
-
-          <div class="row">
-            <label style="margin:0"><input id="actDistance" type="checkbox"> 距離復帰</label>
-            <label style="margin:0"><input id="actScope" type="checkbox"> 範囲/期限</label>
-            <label style="margin:0"><input id="actBody" type="checkbox"> 身体接地</label>
-            <label style="margin:0"><input id="actStop" type="checkbox"> 中断/停止</label>
+          <div style="flex:2; min-width:220px;">
+            <label class="muted" for="overload">過負荷 <span id="overloadVal" class="mono"></span></label>
+            <input id="overload" type="range" min="0" max="5" step="1" value="0" />
           </div>
+        </div>
 
-          <label>境界テンプレ</label>
-          <select id="boundaryTpl">
-            <option value="">（未選択）</option>
-            <option value="短文化">短文化</option>
-            <option value="説明しない">説明しない</option>
-            <option value="頻度/時間の固定">頻度/時間の固定</option>
-            <option value="不可宣言">不可宣言</option>
-          </select>
+        <div style="margin-top:10px;">
+          <div class="muted">ERR チップ</div>
+          <div id="errChips" class="chips" style="margin-top:8px;"></div>
+        </div>
 
-          <label>境界メモ</label>
-          <input id="boundaryNote" placeholder="例：今日はここまで。明日返す。" />
+        <div style="margin-top:10px;">
+          <label class="muted" for="note">メモ</label>
+          <textarea id="note" placeholder="状況を一言でも"></textarea>
+        </div>
 
-          <div class="row" style="margin-top:12px;">
+        <div class="row" style="margin-top:10px;">
+          <label class="row"><input id="actDistance" type="checkbox" /> 距離復帰</label>
+          <label class="row"><input id="actScope" type="checkbox" /> 範囲/期限</label>
+          <label class="row"><input id="actBody" type="checkbox" /> 身体接地</label>
+          <label class="row"><input id="actStop" type="checkbox" /> 中断</label>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <div style="flex:1; min-width:220px;">
+            <label class="muted" for="boundaryTpl">境界テンプレ</label>
+            <input id="boundaryTpl" placeholder="例：今日はここまで" />
+          </div>
+          <div style="flex:2; min-width:260px;">
+            <label class="muted" for="boundaryNote">境界メモ</label>
+            <input id="boundaryNote" placeholder="補足" />
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px; justify-content:space-between;">
+          <div class="row">
             <button id="saveBtn" class="primary" type="button">保存</button>
             <div id="saveMsg" class="muted"></div>
           </div>
-        </div>
-
-        <div class="card">
-          <div class="muted" style="margin-bottom:8px;">認証（メールOTP）</div>
-          <input id="authEmail" placeholder="メールアドレス" />
-          <div class="row" style="margin-top:10px;">
-            <button id="loginBtn" class="primary" type="button">ログインリンク送信</button>
-            <button id="logoutBtn" type="button">ログアウト</button>
-          </div>
-          <div id="authMsg" class="muted" style="margin-top:10px;"></div>
-
-          <div class="sep"></div>
-
-          <div class="muted" style="margin-bottom:8px;">履歴の表示対象</div>
-          <select id="ownerSelect"></select>
-
-          <div class="sep"></div>
-
           <div class="row">
-            <button id="exportBtn" type="button">ローカル書き出し(JSON)</button>
-            <label style="margin:0">
-              <input id="importFile" type="file" accept="application/json" style="display:none;">
-              <button type="button" onclick="document.getElementById('importFile').click()">ローカル取り込み</button>
-            </label>
+            <button id="exportBtn" type="button">ローカルExport</button>
+            <input id="importFile" type="file" accept="application/json" />
             <button id="wipeBtn" class="danger" type="button">ローカル全削除</button>
-          </div>
-
-          <div class="muted" style="margin-top:10px;">
-            ※クラウドに保存したログは「History」タブに表示。ローカルは端末依存。
           </div>
         </div>
       </div>
     </section>
 
-    <!-- History -->
-    <section class="tab" id="tab-list">
+    <section id="tab-list" class="tab">
       <div class="card">
-        <div class="row">
-          <div style="flex:1">
-            <div class="muted">履歴（選択中オーナー）</div>
-            <div class="muted">※共有先は ownerSelect で/fw</div>
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <div style="font-weight:700;">履歴</div>
+            <div class="muted">閲覧オーナーを切替できます（ログイン時）</div>
+          </div>
+          <div style="min-width:240px;">
+            <label class="muted" for="ownerSelect">閲覧対象</label>
+            <select id="ownerSelect"></select>
           </div>
         </div>
       </div>
-      <div style="height:12px"></div>
       <ul id="logList"></ul>
     </section>
 
-    <!-- Diagnosis -->
-    <section class="tab" id="tab-diag">
+    <section id="tab-diag" class="tab">
       <div class="card">
-        <div class="muted">診断（YES/NO）</div>
+        <div style="font-weight:700;">診断</div>
+        <div class="muted">質問に YES/NO で答えてください</div>
       </div>
-      <div style="height:12px"></div>
       <div id="diagBox"></div>
-      <div style="height:12px"></div>
       <div id="diagResult"></div>
     </section>
 
-    <!-- Settings -->
-    <section class="tab" id="tab-settings">
+    <section id="tab-settings" class="tab">
       <div class="card">
-        <div class="muted">閲覧者の管理（自分のクラウドログを共有）</div>
+        <div style="font-weight:700;">共有設定（閲覧者）</div>
+        <div class="muted">オーナー（自分）のログを、メールで閲覧できる人を追加します。</div>
         <div class="row" style="margin-top:10px;">
-          <input id="viewerEmail" placeholder="閲覧者メール（例：someone@example.com）" />
+          <input id="viewerEmail" type="email" placeholder="viewer@example.com" style="flex:1; min-width:240px;" />
           <button id="addViewerBtn" class="primary" type="button">追加</button>
         </div>
-        <div style="height:12px"></div>
-        <ul id="viewerList"></ul>
-        <div class="muted" style="margin-top:10px;">
-          ※閲覧者はログを「読むだけ」。削除や追加はオーナーのみ。
-        </div>
       </div>
+      <ul id="viewerList"></ul>
     </section>
   </main>
 
-  <!-- supabase-js (必須) -->
+  <!-- ★順番重要：supabase-js を先に -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- app -->
   <script src="./app.js"></script>
 </body>
 </html>
