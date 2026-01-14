@@ -241,6 +241,32 @@
     /* aリンク */
     a { color: rgba(170,210,255,.95); }
     a:hover { opacity: .9; }
+    /* インポート（label.file）を“ボタン見た目”にする：白地白文字を潰す */
+label.file{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.06);
+  color: #f2f2f2;
+  border: 1px solid rgba(255,255,255,.12);
+  user-select: none;
+}
+
+label.file:hover{
+  background: rgba(255,255,255,.11);
+  border-color: rgba(255,255,255,.28);
+}
+label.file:active{
+  transform: translateY(1px);
+}
+
+/* 念のため：中の文字色が吸われるケースを封じる */
+label.file, label.file *{
+  color: #f2f2f2 !important;
+}
+
   </style>
 </head>
 
