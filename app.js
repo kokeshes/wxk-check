@@ -53,8 +53,9 @@
   // ---------------------
   // Supabase config (SET YOUR VALUES)
   // ---------------------
-  // ★あなたのSupabase情報に合わせて設定済み
+  // あなたの Supabase 情報を反映済み
   const SUPABASE_URL = "https://nghnvqolxlzblwncpfgw.supabase.co";
+  // ここは「Publishable key（sb_publishable_...）」でも動くように許可
   const SUPABASE_ANON_KEY = "sb_publishable_eMbDDZzJfNIheEzK04rsRw_oXMoc7fh";
 
   const supabase = safe(() => {
@@ -63,22 +64,21 @@
       SUPABASE_URL.startsWith("https://") &&
       SUPABASE_URL.includes(".supabase.co");
 
-    // ★修正：sb_publishable_ を受け付ける（従来の eyJ... もOK）
+    // ★修正点：旧 anon (eyJ...) と新 publishable (sb_publishable_...) の両方を許可
     const okKey =
       typeof SUPABASE_ANON_KEY === "string" &&
-      (
-        SUPABASE_ANON_KEY.startsWith("eyJ") ||
-        SUPABASE_ANON_KEY.startsWith("sb_publishable_")
-      ) &&
-      SUPABASE_ANON_KEY.length > 20;
+      SUPABASE_ANON_KEY.length > 20 &&
+      (SUPABASE_ANON_KEY.startsWith("eyJ") || SUPABASE_ANON_KEY.startsWith("sb_publishable_"));
 
     const hasLib = !!(window.supabase && typeof window.supabase.createClient === "function");
+
     if (okUrl && okKey && hasLib) {
       return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         auth: {
           persistSession: true,
           autoRefreshToken: true,
-          detectSessionInUrl: true
+          detectSessionInUrl: true,
+          // flowType: "pkce"  // OTP なら通常不要。必要なら有効化
         }
       });
     }
@@ -111,7 +111,6 @@
 
     // --- E-codes (note: E0000 is canonical display) ---
     { code: "E0000", name: "平常運転（異常なし）", sev: "Info", quick: "維持。良かった要因を1行ログ" },
-    // 互換：古い参照がE000でもOK（normalizeでE0000に統一）
     { code: "E010", name: "雷出力：安定（集中・快）", sev: "Info", quick: "45–90分ごとに小休止＋水分固定" },
     { code: "E011", name: "思考が“外部モード”へ（距離が取れる）", sev: "Info", quick: "分析OK。感情は日本語で1回着地" },
 
@@ -285,32 +284,17 @@
       return;
     }
 
-    // ★修正：Magic link から戻った直後にセッション確定（失敗してもUIは落とさない）
-    await safe(async () => {
-      const hasAuthParams =
-        location.href.includes("code=") ||
-        location.href.includes("access_token=") ||
-        location.href.includes("refresh_token=");
-
-      if (hasAuthParams && supabase.auth.exchangeCodeForSession) {
-        try {
-          await supabase.auth.exchangeCodeForSession(location.href);
-        } catch {}
-      }
-    });
-
     const sess = await safe(async () => {
       const { data } = await supabase.auth.getSession();
       return data?.session || null;
     });
 
-    // ★修正：email は lower で統一
-    sessionUser = sess?.user ? { id: sess.user.id, email: (sess.user.email || "").toLowerCase() } : null;
+    sessionUser = sess?.user ? { id: sess.user.id, email: sess.user.email } : null;
     updateAuthUI();
 
     safe(() => {
       supabase.auth.onAuthStateChange((_event, s) => {
-        sessionUser = s?.user ? { id: s.user.id, email: (s.user.email || "").toLowerCase() } : null;
+        sessionUser = s?.user ? { id: s.user.id, email: s.user.email } : null;
         updateAuthUI();
         refreshOwnerOptions().catch(() => {});
       });
@@ -320,15 +304,14 @@
     if (loginBtn && !loginBtn.dataset.bound) {
       loginBtn.dataset.bound = "1";
       loginBtn.addEventListener("click", async () => {
-        const email = ($("authEmail")?.value || "").trim().toLowerCase();
+        const email = ($("authEmail")?.value || "").trim();
         if (!email) return setAuthMsg("メールを入れてください。");
 
-        // ★修正：redirectは origin+pathname に固定（AuthのRedirect URLsに登録必須）
-        const redirectTo = `${location.origin}${location.pathname}`;
-
+        // ★注意：Supabase側の Auth > URL Configuration に
+        // 「Site URL」と「Redirect URLs」に、このアプリのURL（GitHub Pages等）を必ず登録してね。
         const { error } = await supabase.auth.signInWithOtp({
           email,
-          options: { emailRedirectTo: redirectTo }
+          options: { emailRedirectTo: location.href }
         });
 
         if (error) return setAuthMsg(`送信失敗：${error.message}`);
@@ -765,7 +748,6 @@
   //  - Problem YES -> add risk + sub E0000
   //  - Good YES/NO -> add E0000 + good-infos
   const DIAG_Q = [
-    // --- Good state confirmations (increase true-negative precision) ---
     { id:"g_sleep_ok", q:"睡眠は足りている（6h以上/質が悪すぎない）？",
       yes:{ add:{ "E0000": 3, "E020": 2, "E023": 1 }, sub:{} },
       no :{ add:{ "E100": 6, "E320": 2 }, sub:{ "E0000": 4 } } },
@@ -798,7 +780,6 @@
       yes:{ add:{ "E0000": 2, "E023": 3 }, sub:{} },
       no :{ add:{ "E320": 4, "E510": 2, "E330": 1 }, sub:{ "E0000": 2 } } },
 
-    // --- Safety / crisis ---
     { id:"c_crisis", q:"今、危険（自己破壊衝動/安全が揺らぐ/一人がまずい）？",
       yes:{ add:{ "E700": 10, "E710": 4 }, sub:{ "E0000": 8 } },
       no :{ add:{ "E0000": 1 }, sub:{} } },
@@ -811,7 +792,6 @@
       yes:{ add:{ "E700": 6, "E220": 4, "002": 3 }, sub:{ "E0000": 5 } },
       no :{ add:{ "E0000": 1 }, sub:{} } },
 
-    // --- Body / life base (granular) ---
     { id:"b_sleep_debt", q:"寝不足が2日以上続いている？",
       yes:{ add:{ "E100": 4, "E130": 3, "E320": 2 }, sub:{ "E0000": 3 } },
       no :{ add:{ "E0000": 1 }, sub:{} } },
@@ -824,7 +804,6 @@
       yes:{ add:{ "E320": 2, "E400": 2, "E410": 1 }, sub:{ "E0000": 1 } },
       no :{ add:{ "E0000": 1 }, sub:{} } },
 
-    // --- People / boundary (granular) ---
     { id:"p_invasion", q:"相手の踏み込みすぎ（時間/身体/尊厳）を感じる？",
       yes:{ add:{ "002": 6, "E210": 3, "E220": 2 }, sub:{ "E0000": 4 } },
       no :{ add:{ "E0000": 1, "E021": 1 }, sub:{} } },
@@ -857,7 +836,6 @@
       yes:{ add:{ "101": 4, "E200": 1 }, sub:{ "E0000": 2 } },
       no :{ add:{ "E0000": 1 }, sub:{} } },
 
-    // --- Cognition / mood ---
     { id:"m_anx", q:"最悪想定が止まらない？",
       yes:{ add:{ "E320": 6, "005": 1, "003": 1 }, sub:{ "E0000": 3 } },
       no :{ add:{ "E0000": 1, "E023": 1 }, sub:{} } },
@@ -882,7 +860,6 @@
       yes:{ add:{ "005": 5, "E320": 1, "003": 1 }, sub:{ "E0000": 2 } },
       no :{ add:{ "E0000": 1 }, sub:{} } },
 
-    // --- Work / research ---
     { id:"w_hyperfocus", q:"時間感覚が飛ぶ没入が出てる（補給忘れ）？",
       yes:{ add:{ "E500": 5, "E010": 2 }, sub:{ "E0000": 1 } },
       no :{ add:{ "E0000": 1 }, sub:{} } },
@@ -903,7 +880,6 @@
       yes:{ add:{ "303": 6, "E300": 1 }, sub:{ "E0000": 2 } },
       no :{ add:{ "E0000": 1, "E022": 1 }, sub:{} } },
 
-    // --- Urge / impulse ---
     { id:"u_light", q:"口寂しさ/儀式が欲しい程度の渇望？",
       yes:{ add:{ "E400": 4 }, sub:{ "E0000": 1 } },
       no :{ add:{ "E0000": 1 }, sub:{} } },
@@ -912,7 +888,6 @@
       yes:{ add:{ "E410": 6, "E130": 2 }, sub:{ "E0000": 2 } },
       no :{ add:{ "E0000": 1 }, sub:{} } },
 
-    // --- Night rule (more granular) ---
     { id:"n_decide", q:"夜に結論を出したくなってる？",
       yes:{ add:{ "005": 5, "003": 2, "E320": 2 }, sub:{ "E0000": 2 } },
       no :{ add:{ "E0000": 1 }, sub:{} } },
