@@ -3,177 +3,180 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#111111" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css" />
   <title>WXK Check</title>
+
+  <!-- 最低限の黒背景・カード調整（既存styles.cssが黒でも邪魔しない“弱い”上書き） -->
   <style>
-    :root{
-      --bg:#0f0f10; --card:#161618; --text:#f2f2f2; --muted:#b9b9b9;
-      --line:#2a2a2d; --danger:#ff4d6d;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      --sans: -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans JP", sans-serif;
-      --w: 980px;
+    :root { color-scheme: dark; }
+    body { background:#0f0f10; color:#f2f2f2; }
+    header { background:#0f0f10; }
+    .muted { opacity: .78; }
+    .card {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      padding: 12px;
     }
-    @media (prefers-color-scheme: light){
-      :root{ --bg:#fafafa; --card:#ffffff; --text:#111; --muted:#555; --line:#e6e6e6; }
-    }
-    body{ margin:0; font-family:var(--sans); background:var(--bg); color:var(--text); }
-    header{ max-width:var(--w); margin:0 auto; padding:18px 14px; }
-    main{ max-width:var(--w); margin:0 auto; padding:0 14px 40px; }
-    .card{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin:10px 0; }
-    .muted{ color:var(--muted); font-size:0.95rem; }
-    nav{ display:flex; gap:8px; flex-wrap:wrap; }
-    nav button{ border:1px solid var(--line); background:transparent; color:var(--text); padding:8px 10px; border-radius:10px; cursor:pointer; }
-    nav button.active{ background:var(--text); color:var(--bg); border-color:transparent; }
-    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    input, select, textarea{ width:100%; box-sizing:border-box; padding:10px; border-radius:10px; border:1px solid var(--line); background:transparent; color:var(--text); }
-    textarea{ min-height:90px; }
-    button.primary{ background:var(--text); color:var(--bg); border:0; padding:10px 12px; border-radius:10px; cursor:pointer; }
-    button.danger{ background:transparent; color:var(--danger); border:1px solid var(--danger); padding:10px 12px; border-radius:10px; cursor:pointer; }
-    ul{ list-style:none; padding:0; margin:0; }
-    .chips{ display:flex; flex-wrap:wrap; gap:8px; }
-    .chip{ border:1px solid var(--line); background:transparent; color:var(--text); padding:8px 10px; border-radius:999px; cursor:pointer; font-size:0.92rem; }
-    .chip.active{ background:var(--text); color:var(--bg); border-color:transparent; }
-    .tab{ display:none; }
-    .tab.active{ display:block; }
-    .mono{ font-family:var(--mono); }
+    .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    input, textarea, select, button { background: rgba(255,255,255,.06); color:#f2f2f2; border:1px solid rgba(255,255,255,.12); }
+    button.primary { background: rgba(255,255,255,.16); }
+    button.danger { background: rgba(255,77,109,.18); border-color: rgba(255,77,109,.35); }
+    label.file { cursor:pointer; }
+    label.file input { display:none; }
+    .divider { height:1px; background: rgba(255,255,255,.10); margin: 12px 0; }
+    .hint { font-size: .92rem; line-height: 1.35; }
   </style>
 </head>
+
 <body>
   <header>
-    <div class="row" style="justify-content:space-between;">
-      <div>
-        <div style="font-weight:800;font-size:1.2rem;">WXK Check</div>
-        <div class="muted">ローカル保存 + Supabase共有（メールOTP）</div>
-      </div>
-    </div>
-    <div class="card">
-      <nav>
-        <button class="active" data-tab="log">記録</button>
-        <button data-tab="list">履歴</button>
-        <button data-tab="diag">診断</button>
-        <button data-tab="settings">共有設定</button>
-      </nav>
-    </div>
+    <h1>WXK Check</h1>
+    <nav>
+      <button data-tab="log" class="active">入力</button>
+      <button data-tab="list">履歴</button>
+      <button data-tab="diag">診断</button>
+      <button data-tab="settings">設定</button>
+    </nav>
   </header>
 
   <main>
-    <!-- Auth -->
-    <section class="card">
-      <div class="row">
-        <div style="flex:1; min-width:240px;">
-          <label class="muted" for="authEmail">メール（OTPログイン）</label>
-          <input id="authEmail" type="email" placeholder="you@example.com" />
-        </div>
-        <div class="row" style="gap:8px;">
-          <button id="loginBtn" class="primary" type="button">ログインリンク送信</button>
-          <button id="logoutBtn" type="button">ログアウト</button>
-        </div>
-      </div>
-      <div id="authMsg" class="muted" style="margin-top:8px;"></div>
-    </section>
 
-    <!-- Tabs -->
-    <section id="tab-log" class="tab active">
-      <div class="card">
-        <div class="row">
-          <div style="flex:1; min-width:180px;">
-            <label class="muted" for="profile">プロファイル</label>
-            <select id="profile">
-              <option>その他</option>
-              <option>恋愛</option>
-              <option>仕事/研究</option>
-              <option>相談/友人</option>
-              <option>単独</option>
-            </select>
-          </div>
-          <div style="flex:2; min-width:220px;">
-            <label class="muted" for="overload">過負荷 <span id="overloadVal" class="mono"></span></label>
-            <input id="overload" type="range" min="0" max="5" step="1" value="0" />
-          </div>
-        </div>
+    <!-- ★ログインUI（OTP） -->
+    <section class="card" id="authCard" style="margin-bottom:14px;">
+      <div class="row" style="justify-content:space-between;">
+        <div style="flex: 1; min-width: 260px;">
+          <div class="muted" style="margin-bottom:6px;">クラウド共有（Supabase）</div>
 
-        <div style="margin-top:10px;">
-          <div class="muted">ERR チップ</div>
-          <div id="errChips" class="chips" style="margin-top:8px;"></div>
-        </div>
-
-        <div style="margin-top:10px;">
-          <label class="muted" for="note">メモ</label>
-          <textarea id="note" placeholder="状況を一言でも"></textarea>
-        </div>
-
-        <div class="row" style="margin-top:10px;">
-          <label class="row"><input id="actDistance" type="checkbox" /> 距離復帰</label>
-          <label class="row"><input id="actScope" type="checkbox" /> 範囲/期限</label>
-          <label class="row"><input id="actBody" type="checkbox" /> 身体接地</label>
-          <label class="row"><input id="actStop" type="checkbox" /> 中断</label>
-        </div>
-
-        <div class="row" style="margin-top:10px;">
-          <div style="flex:1; min-width:220px;">
-            <label class="muted" for="boundaryTpl">境界テンプレ</label>
-            <input id="boundaryTpl" placeholder="例：今日はここまで" />
-          </div>
-          <div style="flex:2; min-width:260px;">
-            <label class="muted" for="boundaryNote">境界メモ</label>
-            <input id="boundaryNote" placeholder="補足" />
-          </div>
-        </div>
-
-        <div class="row" style="margin-top:12px; justify-content:space-between;">
           <div class="row">
-            <button id="saveBtn" class="primary" type="button">保存</button>
-            <div id="saveMsg" class="muted"></div>
+            <input id="authEmail" type="email" placeholder="you@example.com" style="flex:1; min-width:220px;" />
+            <button id="loginBtn" class="primary" type="button">ログインリンク送信</button>
+            <button id="logoutBtn" type="button">ログアウト</button>
           </div>
-          <div class="row">
-            <button id="exportBtn" type="button">ローカルExport</button>
-            <input id="importFile" type="file" accept="application/json" />
-            <button id="wipeBtn" class="danger" type="button">ローカル全削除</button>
-          </div>
-        </div>
-      </div>
-    </section>
 
-    <section id="tab-list" class="tab">
-      <div class="card">
-        <div class="row" style="justify-content:space-between;">
-          <div>
-            <div style="font-weight:700;">履歴</div>
-            <div class="muted">閲覧オーナーを切替できます（ログイン時）</div>
+          <div id="authMsg" class="muted hint" style="margin-top:8px;">
+            Supabase未設定：ローカルのみ動作中（SUPABASE_URL / KEY を設定すると共有できます）
           </div>
-          <div style="min-width:240px;">
-            <label class="muted" for="ownerSelect">閲覧対象</label>
+
+          <div class="divider"></div>
+
+          <div class="row">
+            <label class="muted">閲覧対象：</label>
             <select id="ownerSelect"></select>
+            <span class="muted hint">（自分=クラウド／共有=閲覧専用）</span>
           </div>
         </div>
       </div>
-      <ul id="logList"></ul>
     </section>
 
+    <!-- 入力（★ここは元のまま保持） -->
+    <section id="tab-log" class="tab active">
+      <h2>今日の入力（1分）</h2>
+
+      <label>プロファイル
+        <select id="profile">
+          <option value="恋愛">恋愛</option>
+          <option value="仕事/研究">仕事/研究</option>
+          <option value="相談/友人">相談/友人</option>
+          <option value="単独">単独</option>
+          <option value="その他">その他</option>
+        </select>
+      </label>
+
+      <label>過負荷（0–5）
+        <input id="overload" type="range" min="0" max="5" step="1" value="2" />
+        <span id="overloadVal">2</span>
+      </label>
+
+      <fieldset>
+        <legend>ERR候補（複数選択）</legend>
+        <div class="chips" id="errChips"></div>
+      </fieldset>
+
+      <label>症状メモ（任意）
+        <textarea id="note" rows="4" placeholder="例：常駐期待っぽい／夜に結論出したくなる…"></textarea>
+      </label>
+
+      <fieldset>
+        <legend>即応（やった？）</legend>
+        <label><input type="checkbox" id="actDistance"> 距離復帰（返信/接触を落とす）</label>
+        <label><input type="checkbox" id="actScope"> 範囲・期限を宣言</label>
+        <label><input type="checkbox" id="actBody"> 身体接地（風呂/運動/食/睡眠）</label>
+        <label><input type="checkbox" id="actStop"> 判断停止（夜は極力結論を出さない）</label>
+      </fieldset>
+
+      <label>次回の境界線宣言（テンプレ）
+        <select id="boundaryTpl">
+          <option value="">-- 選ぶ --</option>
+          <option value="常駐はできない。範囲と期限を決めたい。">この調子で常駐はできない。範囲と期限を決めたい。</option>
+          <option value="今日は判断しない。明日話そう。">今日は判断しない。明日話そう。</option>
+          <option value="試し行為（嫉妬/沈黙）は不可。言葉で確認したい。">試し行為は不可。言葉で確認したい。</option>
+          <option value="その決定はあなたに返したい。あなたはどうしたい？">決定はあなたに返したい。あなたはどうしたい？</option>
+        </select>
+      </label>
+
+      <label>境界線メモ（任意）
+        <input id="boundaryNote" type="text" placeholder="例：週1で相談、30分まで など" />
+      </label>
+
+      <button id="saveBtn" class="primary">保存</button>
+      <p id="saveMsg" class="muted"></p>
+    </section>
+
+    <!-- 履歴 -->
+    <section id="tab-list" class="tab">
+      <h2>履歴</h2>
+      <div class="row">
+        <button id="exportBtn" type="button">エクスポート（JSON）</button>
+        <label class="file">
+          インポート
+          <input id="importFile" type="file" accept="application/json" />
+        </label>
+      </div>
+      <ul id="logList" class="list"></ul>
+    </section>
+
+    <!-- 診断 -->
     <section id="tab-diag" class="tab">
-      <div class="card">
-        <div style="font-weight:700;">診断</div>
-        <div class="muted">質問に YES/NO で答えてください</div>
-      </div>
+      <h2>故障診断（YES/NO）</h2>
       <div id="diagBox"></div>
-      <div id="diagResult"></div>
+      <div id="diagResult" class="card"></div>
     </section>
 
+    <!-- 設定 -->
     <section id="tab-settings" class="tab">
-      <div class="card">
-        <div style="font-weight:700;">共有設定（閲覧者）</div>
-        <div class="muted">オーナー（自分）のログを、メールで閲覧できる人を追加します。</div>
-        <div class="row" style="margin-top:10px;">
-          <input id="viewerEmail" type="email" placeholder="viewer@example.com" style="flex:1; min-width:240px;" />
-          <button id="addViewerBtn" class="primary" type="button">追加</button>
+      <h2>設定</h2>
+
+      <p>
+        <a href="./manual/index.html">取扱説明書（完全版）を開く</a>
+      </p>
+
+      <!-- ★共有（閲覧者）管理UI：app.jsが参照するIDをここで補完 -->
+      <div class="card" style="margin: 12px 0;">
+        <div style="font-weight:700; margin-bottom:8px;">履歴共有（閲覧者の追加）</div>
+        <div class="muted hint" style="margin-bottom:10px;">
+          オーナー（自分）のログを、指定メールに「閲覧専用」で共有します。<br>
+          ※ログインしていないと使えません。
         </div>
+
+        <div class="row">
+          <input id="viewerEmail" type="email" placeholder="viewer@example.com" style="flex:1; min-width:220px;" />
+          <button id="addViewerBtn" class="primary" type="button">閲覧者を追加</button>
+        </div>
+
+        <div class="divider"></div>
+        <ul id="viewerList" class="list"></ul>
       </div>
-      <ul id="viewerList"></ul>
+
+      <button id="wipeBtn" class="danger" type="button">全データ削除</button>
+      <p class="muted">端末内保存（iCloud同期なし）。必要ならExportでバックアップ。</p>
     </section>
   </main>
 
-  <!-- ★順番重要：supabase-js を先に -->
+  <!-- ★最重要：supabase-js → app.js の順 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
