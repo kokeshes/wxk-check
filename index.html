@@ -8,49 +8,252 @@
   <link rel="stylesheet" href="styles.css" />
   <title>WXK Check</title>
 
-  <!-- 最低限の黒背景・カード調整（既存styles.cssが黒でも邪魔しない“弱い”上書き） -->
+  <!-- 黒背景 + UI補正 + チップ完全版（styles.cssが何でも壊れにくい） -->
   <style>
     :root { color-scheme: dark; }
+
     body { background:#0f0f10; color:#f2f2f2; }
     header { background:#0f0f10; }
+
+    /* 文字 */
     .muted { opacity: .78; }
+    .hint { font-size: .92rem; line-height: 1.35; }
+
+    /* レイアウト */
+    .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .divider { height:1px; background: rgba(255,255,255,.10); margin: 12px 0; }
+
+    /* カード */
     .card {
       background: rgba(255,255,255,.04);
       border: 1px solid rgba(255,255,255,.08);
       border-radius: 14px;
       padding: 12px;
     }
-    .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-    input, textarea, select, button { background: rgba(255,255,255,.06); color:#f2f2f2; border:1px solid rgba(255,255,255,.12); }
+
+    /* 入力部品 */
+    input, textarea, select, button {
+      background: rgba(255,255,255,.06);
+      color:#f2f2f2;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius: 12px;
+      padding: 10px 12px;
+      outline: none;
+    }
+    textarea { border-radius: 14px; }
+    input:focus, textarea:focus, select:focus {
+      border-color: rgba(255,255,255,.32);
+      box-shadow: 0 0 0 3px rgba(255,255,255,.08);
+    }
+
+    /* ボタン */
+    button { cursor:pointer; }
     button.primary { background: rgba(255,255,255,.16); }
+    button.primary:hover { background: rgba(255,255,255,.22); }
     button.danger { background: rgba(255,77,109,.18); border-color: rgba(255,77,109,.35); }
+    button.danger:hover { background: rgba(255,77,109,.26); }
+
+    /* ファイル */
     label.file { cursor:pointer; }
     label.file input { display:none; }
-    .divider { height:1px; background: rgba(255,255,255,.10); margin: 12px 0; }
-    .hint { font-size: .92rem; line-height: 1.35; }
-    /* ERR候補チップ（見えない問題の修正） */
-.chip {
-  background: rgba(255,255,255,.08);
-  color: #f2f2f2;
-  border: 1px solid rgba(255,255,255,.25);
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
 
-/* 選択中（active） */
-.chip.active {
-  background: rgba(255,255,255,.28);
-  color: #0f0f10;
-  border-color: rgba(255,255,255,.6);
-}
+    /* -----------------------------
+       ERRチップ：見えない問題＋全部やる版
+       - 追加クラス無しで動く（JS無変更）
+       - コードの先頭/中身で色分け
+       ----------------------------- */
 
-/* hover時 */
-.chip:hover {
-  background: rgba(255,255,255,.16);
-}
+    /* chipsコンテナ：スマホで詰まる */
+    .chips{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:stretch;
+    }
 
+    /* チップ共通（既存styles.cssのchip指定を確実に上書き） */
+    button.chip {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.06);
+      color: #f2f2f2;
+      font-size: .85rem;
+      line-height: 1.15;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .05s ease, background .12s ease, border-color .12s ease, color .12s ease;
+      max-width: 100%;
+    }
+
+    button.chip:hover {
+      background: rgba(255,255,255,.11);
+      border-color: rgba(255,255,255,.28);
+    }
+    button.chip:active { transform: translateY(1px); }
+
+    /* active（選択中）：反転＋くっきり */
+    button.chip.active {
+      background: rgba(255,255,255,.26);
+      color: #0f0f10;
+      border-color: rgba(255,255,255,.58);
+    }
+
+    /* チップを“ちょい整列”させる（スマホで2〜3列感） */
+    @media (max-width: 520px){
+      button.chip{
+        flex: 1 1 calc(50% - 8px); /* 2列ベース */
+        text-align:center;
+      }
+    }
+    @media (max-width: 360px){
+      button.chip{
+        flex: 1 1 100%; /* 1列 */
+      }
+    }
+    @media (min-width: 521px){
+      button.chip{
+        flex: 0 0 auto; /* PCは自然流し */
+      }
+    }
+
+    /* -----------------------------
+       色分け：テキストに含まれるコードで判定
+       - Critical/High/Med/Info を “雰囲気” で分ける
+       - JS変更なし、CSSだけでやる
+       ----------------------------- */
+
+    /* E0000（平常運転）は淡く */
+    button.chip[data-code="E0000"]{
+      background: rgba(255,255,255,.04);
+      border-color: rgba(255,255,255,.10);
+      color: rgba(242,242,242,.80);
+    }
+    button.chip[data-code="E0000"].active{
+      background: rgba(255,255,255,.18);
+      color:#0f0f10;
+      border-color: rgba(255,255,255,.45);
+    }
+
+    /* E系（Info/Medが多い）を少し青み */
+    button.chip[data-code^="E"]{
+      border-color: rgba(170,210,255,.24);
+      background: rgba(170,210,255,.07);
+    }
+    button.chip[data-code^="E"]:hover{
+      background: rgba(170,210,255,.11);
+      border-color: rgba(170,210,255,.32);
+    }
+    button.chip[data-code^="E"].active{
+      background: rgba(170,210,255,.28);
+      color:#0f0f10;
+      border-color: rgba(170,210,255,.55);
+    }
+
+    /* 重大（Critical）っぽいコード群：赤寄せ（あなたのERR_CODESに合わせた“概ね”）
+       - 001,002,202,203,204,E700,E710,E220 あたりを強めに
+    */
+    button.chip[data-code="001"],
+    button.chip[data-code="002"],
+    button.chip[data-code="202"],
+    button.chip[data-code="203"],
+    button.chip[data-code="204"],
+    button.chip[data-code="E700"],
+    button.chip[data-code="E710"],
+    button.chip[data-code="E220"]{
+      background: rgba(255,77,109,.10);
+      border-color: rgba(255,77,109,.32);
+    }
+    button.chip[data-code="001"].active,
+    button.chip[data-code="002"].active,
+    button.chip[data-code="202"].active,
+    button.chip[data-code="203"].active,
+    button.chip[data-code="204"].active,
+    button.chip[data-code="E700"].active,
+    button.chip[data-code="E710"].active,
+    button.chip[data-code="E220"].active{
+      background: rgba(255,77,109,.30);
+      color:#0f0f10;
+      border-color: rgba(255,77,109,.55);
+    }
+
+    /* High（オレンジ寄せ）：003,004,005,101,102,104,201,303,E210,E320,E330,E410,E510 あたり */
+    button.chip[data-code="003"],
+    button.chip[data-code="004"],
+    button.chip[data-code="005"],
+    button.chip[data-code="101"],
+    button.chip[data-code="102"],
+    button.chip[data-code="104"],
+    button.chip[data-code="201"],
+    button.chip[data-code="303"],
+    button.chip[data-code="E210"],
+    button.chip[data-code="E320"],
+    button.chip[data-code="E330"],
+    button.chip[data-code="E410"],
+    button.chip[data-code="E510"]{
+      background: rgba(255,178,71,.10);
+      border-color: rgba(255,178,71,.30);
+    }
+    button.chip[data-code="003"].active,
+    button.chip[data-code="004"].active,
+    button.chip[data-code="005"].active,
+    button.chip[data-code="101"].active,
+    button.chip[data-code="102"].active,
+    button.chip[data-code="104"].active,
+    button.chip[data-code="201"].active,
+    button.chip[data-code="303"].active,
+    button.chip[data-code="E210"].active,
+    button.chip[data-code="E320"].active,
+    button.chip[data-code="E330"].active,
+    button.chip[data-code="E410"].active,
+    button.chip[data-code="E510"].active{
+      background: rgba(255,178,71,.26);
+      color:#0f0f10;
+      border-color: rgba(255,178,71,.55);
+    }
+
+    /* Med（黄〜緑っぽい）: 301,E100,E110,E120,E130,E200,E300,E310,E400,E500,E510 etc
+       ※上でHigh指定したものはそちらが勝つ
+    */
+    button.chip[data-code="301"],
+    button.chip[data-code="E100"],
+    button.chip[data-code="E110"],
+    button.chip[data-code="E120"],
+    button.chip[data-code="E130"],
+    button.chip[data-code="E200"],
+    button.chip[data-code="E300"],
+    button.chip[data-code="E310"],
+    button.chip[data-code="E400"],
+    button.chip[data-code="E500"]{
+      background: rgba(170,255,170,.08);
+      border-color: rgba(170,255,170,.24);
+    }
+    button.chip[data-code="301"].active,
+    button.chip[data-code="E100"].active,
+    button.chip[data-code="E110"].active,
+    button.chip[data-code="E120"].active,
+    button.chip[data-code="E130"].active,
+    button.chip[data-code="E200"].active,
+    button.chip[data-code="E300"].active,
+    button.chip[data-code="E310"].active,
+    button.chip[data-code="E400"].active,
+    button.chip[data-code="E500"].active{
+      background: rgba(170,255,170,.22);
+      color:#0f0f10;
+      border-color: rgba(170,255,170,.45);
+    }
+
+    /* リスト表示の最低限（styles.cssが未定義でも崩れない） */
+    ul.list { list-style:none; padding-left:0; }
+    ul.list > li.card { margin: 10px 0; }
+
+    /* aリンク */
+    a { color: rgba(170,210,255,.95); }
+    a:hover { opacity: .9; }
   </style>
 </head>
 
