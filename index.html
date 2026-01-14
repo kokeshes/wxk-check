@@ -28,6 +28,29 @@
     label.file input { display:none; }
     .divider { height:1px; background: rgba(255,255,255,.10); margin: 12px 0; }
     .hint { font-size: .92rem; line-height: 1.35; }
+    /* ERR候補チップ（見えない問題の修正） */
+.chip {
+  background: rgba(255,255,255,.08);
+  color: #f2f2f2;
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* 選択中（active） */
+.chip.active {
+  background: rgba(255,255,255,.28);
+  color: #0f0f10;
+  border-color: rgba(255,255,255,.6);
+}
+
+/* hover時 */
+.chip:hover {
+  background: rgba(255,255,255,.16);
+}
+
   </style>
 </head>
 
