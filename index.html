@@ -22,6 +22,7 @@
     /* レイアウト */
     .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
     .divider { height:1px; background: rgba(255,255,255,.10); margin: 12px 0; }
+    .spacer { height: 10px; }
 
     /* カード */
     .card {
@@ -58,9 +59,7 @@
     label.file input { display:none; }
 
     /* -----------------------------
-       ERRチップ：見えない問題＋全部やる版
-       - 追加クラス無しで動く（JS無変更）
-       - コードの先頭/中身で色分け
+       ERRチップ：完全版（JS無変更）
        ----------------------------- */
 
     /* chipsコンテナ：スマホで詰まる */
@@ -103,29 +102,21 @@
       border-color: rgba(255,255,255,.58);
     }
 
-    /* チップを“ちょい整列”させる（スマホで2〜3列感） */
+    /* チップを“ちょい整列”させる（スマホで2列ベース） */
     @media (max-width: 520px){
       button.chip{
-        flex: 1 1 calc(50% - 8px); /* 2列ベース */
+        flex: 1 1 calc(50% - 8px);
         text-align:center;
       }
     }
     @media (max-width: 360px){
-      button.chip{
-        flex: 1 1 100%; /* 1列 */
-      }
+      button.chip{ flex: 1 1 100%; }
     }
     @media (min-width: 521px){
-      button.chip{
-        flex: 0 0 auto; /* PCは自然流し */
-      }
+      button.chip{ flex: 0 0 auto; }
     }
 
-    /* -----------------------------
-       色分け：テキストに含まれるコードで判定
-       - Critical/High/Med/Info を “雰囲気” で分ける
-       - JS変更なし、CSSだけでやる
-       ----------------------------- */
+    /* 色分け（data-code による） */
 
     /* E0000（平常運転）は淡く */
     button.chip[data-code="E0000"]{
@@ -154,9 +145,7 @@
       border-color: rgba(170,210,255,.55);
     }
 
-    /* 重大（Critical）っぽいコード群：赤寄せ（あなたのERR_CODESに合わせた“概ね”）
-       - 001,002,202,203,204,E700,E710,E220 あたりを強めに
-    */
+    /* Critical（赤）：概ね該当するもの */
     button.chip[data-code="001"],
     button.chip[data-code="002"],
     button.chip[data-code="202"],
@@ -181,7 +170,7 @@
       border-color: rgba(255,77,109,.55);
     }
 
-    /* High（オレンジ寄せ）：003,004,005,101,102,104,201,303,E210,E320,E330,E410,E510 あたり */
+    /* High（橙） */
     button.chip[data-code="003"],
     button.chip[data-code="004"],
     button.chip[data-code="005"],
@@ -216,9 +205,7 @@
       border-color: rgba(255,178,71,.55);
     }
 
-    /* Med（黄〜緑っぽい）: 301,E100,E110,E120,E130,E200,E300,E310,E400,E500,E510 etc
-       ※上でHigh指定したものはそちらが勝つ
-    */
+    /* Med（緑） */
     button.chip[data-code="301"],
     button.chip[data-code="E100"],
     button.chip[data-code="E110"],
@@ -247,7 +234,7 @@
       border-color: rgba(170,255,170,.45);
     }
 
-    /* リスト表示の最低限（styles.cssが未定義でも崩れない） */
+    /* リスト表示の最低限 */
     ul.list { list-style:none; padding-left:0; }
     ul.list > li.card { margin: 10px 0; }
 
@@ -270,34 +257,7 @@
 
   <main>
 
-    <!-- ★ログインUI（OTP） -->
-    <section class="card" id="authCard" style="margin-bottom:14px;">
-      <div class="row" style="justify-content:space-between;">
-        <div style="flex: 1; min-width: 260px;">
-          <div class="muted" style="margin-bottom:6px;">クラウド共有（Supabase）</div>
-
-          <div class="row">
-            <input id="authEmail" type="email" placeholder="you@example.com" style="flex:1; min-width:220px;" />
-            <button id="loginBtn" class="primary" type="button">ログインリンク送信</button>
-            <button id="logoutBtn" type="button">ログアウト</button>
-          </div>
-
-          <div id="authMsg" class="muted hint" style="margin-top:8px;">
-            Supabase未設定：ローカルのみ動作中（SUPABASE_URL / KEY を設定すると共有できます）
-          </div>
-
-          <div class="divider"></div>
-
-          <div class="row">
-            <label class="muted">閲覧対象：</label>
-            <select id="ownerSelect"></select>
-            <span class="muted hint">（自分=クラウド／共有=閲覧専用）</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 入力（★ここは元のまま保持） -->
+    <!-- 入力（★クラウドUIを撤去：1分入力に集中） -->
     <section id="tab-log" class="tab active">
       <h2>今日の入力（1分）</h2>
 
@@ -349,11 +309,28 @@
 
       <button id="saveBtn" class="primary">保存</button>
       <p id="saveMsg" class="muted"></p>
+
+      <div class="spacer"></div>
+      <div class="muted hint card">
+        クラウド共有は「設定」でログインすると自動で有効になります（入力はそのまま1分でOK）。
+      </div>
     </section>
 
-    <!-- 履歴 -->
+    <!-- 履歴（★ここに ownerSelect を集約） -->
     <section id="tab-list" class="tab">
       <h2>履歴</h2>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="row">
+          <label class="muted">閲覧対象：</label>
+          <select id="ownerSelect"></select>
+          <span class="muted hint">（ローカル / 自分クラウド / 共有）</span>
+        </div>
+        <div id="authMsg" class="muted hint" style="margin-top:8px;">
+          Supabase未設定：ローカルのみ動作中（設定でログインすると共有できます）
+        </div>
+      </div>
+
       <div class="row">
         <button id="exportBtn" type="button">エクスポート（JSON）</button>
         <label class="file">
@@ -361,6 +338,7 @@
           <input id="importFile" type="file" accept="application/json" />
         </label>
       </div>
+
       <ul id="logList" class="list"></ul>
     </section>
 
@@ -371,7 +349,7 @@
       <div id="diagResult" class="card"></div>
     </section>
 
-    <!-- 設定 -->
+    <!-- 設定（★ログインUI＋共有管理をここに集約） -->
     <section id="tab-settings" class="tab">
       <h2>設定</h2>
 
@@ -379,7 +357,21 @@
         <a href="./manual/index.html">取扱説明書（完全版）を開く</a>
       </p>
 
-      <!-- ★共有（閲覧者）管理UI：app.jsが参照するIDをここで補完 -->
+      <!-- ★ログインUI（OTP）：ここに移動 -->
+      <div class="card" id="authCard" style="margin: 12px 0;">
+        <div style="font-weight:700; margin-bottom:8px;">クラウド共有（Supabaseログイン）</div>
+        <div class="muted hint" style="margin-bottom:10px;">
+          メールにログインリンク（OTP）を送ります。ログイン後は保存時に自動でクラウド同期されます。
+        </div>
+
+        <div class="row">
+          <input id="authEmail" type="email" placeholder="you@example.com" style="flex:1; min-width:220px;" />
+          <button id="loginBtn" class="primary" type="button">ログインリンク送信</button>
+          <button id="logoutBtn" type="button">ログアウト</button>
+        </div>
+      </div>
+
+      <!-- ★共有（閲覧者）管理UI -->
       <div class="card" style="margin: 12px 0;">
         <div style="font-weight:700; margin-bottom:8px;">履歴共有（閲覧者の追加）</div>
         <div class="muted hint" style="margin-bottom:10px;">
