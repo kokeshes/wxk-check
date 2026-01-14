@@ -1,4 +1,4 @@
-const CACHE = "wxk-check-v14";
+const CACHE = "wxk-check-v15";
 const ASSETS = [
   "./",
   "./index.html",
